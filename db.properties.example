@@ -1,0 +1,6 @@
+# Copy to db.properties and supply your own local SQL login.
+db.url=jdbc:sqlserver://127.0.0.1:1433;databaseName=QuanLyBanVePhimMoi;encrypt=true;trustServerCertificate=true;loginTimeout=5
+db.user=YOUR_SQL_LOGIN
+db.password=YOUR_SQL_PASSWORD
+# Alternatively use the CINEMA_DB_PASSWORD environment variable.
+# trustServerCertificate is intended only for this local development database.

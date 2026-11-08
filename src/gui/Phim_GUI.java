@@ -1,28 +1,20 @@
 package gui;
 
-import javax.swing.*;
 import java.awt.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import connect.ConnectDB;
 
-public class Phim_GUI extends JFrame {
-    private static final int COT = 5;           // số thẻ phim trên 1 hàng
-    private static final int ANH_RONG = 200;
-    private static final int ANH_CAO = 260;
+import javax.swing.*;
+
+public class Phim_GUI extends JPanel {
+    private static final int COT = 3; // số thẻ phim trên 1 hàng
+    private static final int ANH_RONG = 170;
+    private static final int ANH_CAO = 220;
 
     private JPanel luoiPhim;
 
     public Phim_GUI() {
-        setTitle("Danh Sách Phim Đang Chiếu - Rạp Chiếu Phim");
-        setExtendedState(JFrame.MAXIMIZED_BOTH); // Mở rộng màn hình full
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setResizable(false);
+        setLayout(new BorderLayout(10, 10));
 
-        add(new Menu_GUI(this), BorderLayout.NORTH);
+        service.Session.requireStaff();
 
         // Tiêu đề trang
         JLabel lblTieuDe = new JLabel("Phim đang chiếu");
@@ -51,26 +43,22 @@ public class Phim_GUI extends JFrame {
         add(scrollPane, BorderLayout.CENTER);
     }
 
+    /** Lấy phim từ DAO; màn hình chỉ tạo thẻ poster cho phim đang chiếu. */
     private void loadPhimDangChieu() {
-        // Có tiền tố N để không bị sai dấu tiếng Việt
-        String sql = "SELECT MaPhim, TenPhim FROM Phim WHERE TrangThai = N'Đang Chiếu'";
-        try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                luoiPhim.add(taoThePhim(rs.getString("MaPhim"), rs.getString("TenPhim")));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        for (entity.Phim movie : new dao.PhimDAO().layTatCaPhim()) {
+            if ("Đang Chiếu".equalsIgnoreCase(movie.getTrangThai()))
+                luoiPhim.add(
+                        taoThePhim(movie.getMaPhim(), movie.getTenPhim(), movie.getPosterPath()));
         }
     }
 
-    private JPanel taoThePhim(String maPhim, String tenPhim) {
+    private JPanel taoThePhim(String maPhim, String tenPhim, String poster) {
         JPanel the = new JPanel(new BorderLayout(0, 8));
         the.setBackground(Color.WHITE);
-        the.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AppTheme.CARD_BORDER),
-                BorderFactory.createEmptyBorder(10, 10, 12, 10)));
+        the.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(210, 210, 210)),
+                        BorderFactory.createEmptyBorder(10, 10, 12, 10)));
 
         // Ảnh phim
         JLabel lblImage = new JLabel();
@@ -80,10 +68,12 @@ public class Phim_GUI extends JFrame {
         lblImage.setOpaque(true);
         lblImage.setBackground(new Color(0xE5E7EB));
 
-        String imagePath = layDuongDanAnh(maPhim);
-        if (!imagePath.isEmpty()) {
-            ImageIcon icon = new ImageIcon(imagePath);
-            Image img = icon.getImage().getScaledInstance(ANH_RONG, ANH_CAO, Image.SCALE_SMOOTH);
+        String imagePath = poster == null || poster.isBlank() ? layDuongDanAnh(maPhim) : poster;
+        if (!imagePath.isEmpty()
+                && java.nio.file.Files.isRegularFile(util.ProjectPaths.resolve(imagePath))) {
+            ImageIcon icon = new ImageIcon(util.ProjectPaths.resolve(imagePath).toString());
+            double scale = Math.min((double) ANH_RONG / Math.max(1, icon.getIconWidth()), (double) ANH_CAO / Math.max(1, icon.getIconHeight()));
+            Image img = icon.getImage().getScaledInstance(Math.max(1, (int) (icon.getIconWidth() * scale)), Math.max(1, (int) (icon.getIconHeight() * scale)), Image.SCALE_SMOOTH);
             lblImage.setIcon(new ImageIcon(img));
         } else {
             lblImage.setText("Không có ảnh");
@@ -91,18 +81,16 @@ public class Phim_GUI extends JFrame {
         }
 
         // Tên phim (dùng HTML để tự xuống dòng khi tên dài)
-        JLabel lblTenPhim = new JLabel("<html><div style='text-align:center;width:190px'>" + tenPhim + "</div></html>",
-                SwingConstants.CENTER);
+        JLabel lblTenPhim =
+                new JLabel(
+                        "<html><div style='text-align:center;width:190px'>"
+                                + tenPhim
+                                + "</div></html>",
+                        SwingConstants.CENTER);
         lblTenPhim.setFont(new Font("Segoe UI", Font.BOLD, 16));
 
         // Nút đặt vé
         JButton btnDatVe = new JButton("Đặt Vé");
-        btnDatVe.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnDatVe.setForeground(Color.WHITE);
-        btnDatVe.setBackground(AppTheme.ACCENT);
-        btnDatVe.setFocusPainted(false);
-        btnDatVe.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnDatVe.setPreferredSize(new Dimension(100, 38));
         btnDatVe.addActionListener(e -> datVe(maPhim));
 
         the.add(lblImage, BorderLayout.NORTH);
@@ -113,8 +101,8 @@ public class Phim_GUI extends JFrame {
 
     // Gán ảnh dựa theo MaPhim
     private String layDuongDanAnh(String maPhim) {
-        if ("1".equals(maPhim)) return "img/avengers.jpg";
-        if ("2".equals(maPhim)) return "img/frozen2.jpg";
+        if ("1".equals(maPhim) || "PH001".equals(maPhim)) return "img/avengers.jpg";
+        if ("2".equals(maPhim) || "PH002".equals(maPhim)) return "img/frozen2.jpg";
         if ("3".equals(maPhim)) return "img/joker.jpg";
         if ("4".equals(maPhim)) return "img/spiderman.jpg";
         if ("5".equals(maPhim)) return "img/theLionKing.jpg";
@@ -125,14 +113,10 @@ public class Phim_GUI extends JFrame {
 
     private void datVe(String maPhim) {
         // Logic đặt vé cho phim đã chọn
-        new BanVe_GUI(maPhim).setVisible(true);
-        dispose();
+        Main_GUI.open("Bán vé", new BanVe_GUI(maPhim));
     }
 
     public static void main(String[] args) {
-        AppTheme.install();
-        SwingUtilities.invokeLater(() -> {
-            new Phim_GUI().setVisible(true);
-        });
+        Main_GUI.main(args);
     }
 }

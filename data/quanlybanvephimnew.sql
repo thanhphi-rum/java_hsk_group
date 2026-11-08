@@ -1,244 +1,58 @@
-
--- =====================================================
--- DATABASE QUAN LY BAN VE PHIM
--- Tat ca ma chinh va ma ngoai dung VARCHAR
--- MySQL 8.0+
--- =====================================================
-
-CREATE DATABASE QuanLyBanVePhimMoi
-
+-- SQL Server. Không DROP database/bảng và không xóa dữ liệu hiện có.
 USE QuanLyBanVePhimMoi;
-
--- =====================================================
--- 1. NHAN VIEN
--- =====================================================
-CREATE TABLE NhanVien (
-    MaNhanVien VARCHAR(10) PRIMARY KEY,
-    TenNhanVien VARCHAR(100) NOT NULL,
-    NgaySinh DATE NOT NULL,
-    GioiTinh VARCHAR(10) NOT NULL,
-    SoDienThoai VARCHAR(15) NOT NULL,
-    Email VARCHAR(100),
-    DiaChi VARCHAR(200)
-);
-
--- =====================================================
--- 2. PHIM
--- =====================================================
-CREATE TABLE Phim (
-    MaPhim VARCHAR(10) PRIMARY KEY,
-    TenPhim VARCHAR(100) NOT NULL,
-    TheLoai VARCHAR(50) NOT NULL,
-    ThoiLuong INT NOT NULL,
-    TrangThai VARCHAR(20) NOT NULL
-);
-
--- =====================================================
--- 3. PHONG CHIEU
--- =====================================================
-CREATE TABLE PhongChieu (
-    MaPhongChieu VARCHAR(10) PRIMARY KEY,
-    TenPhong VARCHAR(50) NOT NULL,
-    SucChua INT NOT NULL
-);
-
--- =====================================================
--- 4. SUAT CHIEU
--- =====================================================
-CREATE TABLE SuatChieu (
-    MaSuatChieu VARCHAR(10) PRIMARY KEY,
-    MaPhim VARCHAR(10) NOT NULL,
-    MaPhongChieu VARCHAR(10) NOT NULL,
-    GioBatDau DATETIME NOT NULL,
-    GioKetThuc DATETIME NOT NULL,
-
-    FOREIGN KEY (MaPhim)
-        REFERENCES Phim(MaPhim),
-
-    FOREIGN KEY (MaPhongChieu)
-        REFERENCES PhongChieu(MaPhongChieu)
-);
-
--- =====================================================
--- 5. GHE
--- =====================================================
-CREATE TABLE Ghe (
-    MaGhe VARCHAR(10) PRIMARY KEY,
-    MaPhongChieu VARCHAR(10) NOT NULL,
-
-    FOREIGN KEY (MaPhongChieu)
-        REFERENCES PhongChieu(MaPhongChieu)
-);
-
--- =====================================================
--- 6. GHE SUAT CHIEU
--- =====================================================
-CREATE TABLE Ghe_SuatChieu (
-    MaSuatChieu VARCHAR(10) NOT NULL,
-    MaGhe VARCHAR(10) NOT NULL,
-    TrangThai VARCHAR(20) DEFAULT 'Trống',
-
-    PRIMARY KEY (MaSuatChieu, MaGhe),
-
-    FOREIGN KEY (MaSuatChieu)
-        REFERENCES SuatChieu(MaSuatChieu),
-
-    FOREIGN KEY (MaGhe)
-        REFERENCES Ghe(MaGhe)
-);
-
--- =====================================================
--- 7. KHACH HANG
--- =====================================================
-CREATE TABLE KhachHang (
-    MaKhachHang VARCHAR(10) PRIMARY KEY,
-    TenKhachHang VARCHAR(100) NOT NULL,
-    SoDienThoai VARCHAR(15) NOT NULL,
-    Email VARCHAR(100) NOT NULL
-);
-
--- =====================================================
--- 8. KHUYEN MAI
--- =====================================================
-CREATE TABLE KhuyenMai (
-    MaKhuyenMai VARCHAR(10) PRIMARY KEY,
-    MoTa VARCHAR(200) NOT NULL,
-    PhanTramGiam DECIMAL(5,2) NOT NULL
-);
-
--- =====================================================
--- 9. HOA DON
--- MaHoaDon khong dung AUTO_INCREMENT vi la VARCHAR
--- =====================================================
-CREATE TABLE HoaDon (
-    MaHoaDon VARCHAR(10) PRIMARY KEY,
-    MaSuatChieu VARCHAR(10) NOT NULL,
-    MaGhe VARCHAR(10) NOT NULL,
-    NgayLap DATETIME NOT NULL,
-    MaNhanVien VARCHAR(10) NOT NULL,
-    MaKhachHang VARCHAR(10) NOT NULL,
-    TongTien DECIMAL(10,2) NOT NULL,
-    MaKhuyenMai VARCHAR(10),
-
-    FOREIGN KEY (MaNhanVien)
-        REFERENCES NhanVien(MaNhanVien),
-
-    FOREIGN KEY (MaGhe)
-        REFERENCES Ghe(MaGhe),
-
-    FOREIGN KEY (MaKhachHang)
-        REFERENCES KhachHang(MaKhachHang),
-
-    FOREIGN KEY (MaKhuyenMai)
-        REFERENCES KhuyenMai(MaKhuyenMai),
-
-    FOREIGN KEY (MaSuatChieu)
-        REFERENCES SuatChieu(MaSuatChieu)
-);
-
--- =====================================================
--- 10. VE
--- =====================================================
-CREATE TABLE Ve (
-    MaVe VARCHAR(10) PRIMARY KEY,
-    MaSuatChieu VARCHAR(10) NOT NULL,
-    MaGhe VARCHAR(10) NOT NULL,
-    GiaTien DECIMAL(10,2) NOT NULL,
-
-    FOREIGN KEY (MaSuatChieu)
-        REFERENCES SuatChieu(MaSuatChieu)
-        ON DELETE CASCADE,
-
-    FOREIGN KEY (MaGhe)
-        REFERENCES Ghe(MaGhe)
-        ON DELETE CASCADE
-);
-
--- =====================================================
--- DU LIEU MAU
--- =====================================================
-
--- NhanVien
-INSERT INTO NhanVien VALUES
-('NV001', 'Nguyễn Văn A', '1985-02-15', 'Nam',
- '0912345678', 'a@gmail.com', 'HCM'),
-('NV002', 'Trần Thị B', '1990-07-22', 'Nữ',
- '0987654321', 'b@gmail.com', 'HCM');
-
--- Phim
-INSERT INTO Phim VALUES
-('PH001', 'Avengers: Endgame', 'Hành động', 180, 'Đang chiếu'),
-('PH002', 'Frozen II', 'Hoạt hình', 103, 'Đang chiếu');
-
--- PhongChieu
-INSERT INTO PhongChieu VALUES
-('PC01', 'Phòng 1', 50),
-('PC02', 'Phòng 2', 50),
-('PC03', 'Phòng 3', 50);
-
--- Ghe: G001-G050 thuoc PC01
---      G051-G100 thuoc PC02
---      G101-G150 thuoc PC03
-INSERT INTO Ghe (MaGhe, MaPhongChieu)
-WITH RECURSIVE seq(n) AS (
-    SELECT 1
-    UNION ALL
-    SELECT n + 1 FROM seq WHERE n < 150
-)
-SELECT
-    CONCAT('G', LPAD(n, 3, '0')),
-    CASE
-        WHEN n <= 50 THEN 'PC01'
-        WHEN n <= 100 THEN 'PC02'
-        ELSE 'PC03'
-    END
-FROM seq;
-
--- KhachHang
-INSERT INTO KhachHang VALUES
-('KH001', 'Phạm Minh D', '0901234567', 'd@gmail.com');
-
--- KhuyenMai
-INSERT INTO KhuyenMai VALUES
-('KM001', 'Không giảm', 0),
-('KM002', 'Giảm 10%', 10);
-
--- SuatChieu
--- Ngay chieu duoc giu theo du lieu mau ban gui
-INSERT INTO SuatChieu VALUES
-('SC001', 'PH001', 'PC01',
- '2025-12-01 19:00:00', '2025-12-01 22:00:00'),
-('SC002', 'PH002', 'PC02',
- '2025-12-01 20:00:00', '2025-12-01 21:45:00');
-
--- Ghe_SuatChieu
--- SC001 su dung G001-G050
--- SC002 su dung G051-G100
-INSERT INTO Ghe_SuatChieu (MaSuatChieu, MaGhe, TrangThai)
-WITH RECURSIVE seq(n) AS (
-    SELECT 1
-    UNION ALL
-    SELECT n + 1 FROM seq WHERE n < 100
-)
-SELECT
-    CASE
-        WHEN n <= 50 THEN 'SC001'
-        ELSE 'SC002'
-    END,
-    CONCAT('G', LPAD(n, 3, '0')),
-    'Trống'
-FROM seq;
-
--- Kiem tra bang va du lieu
-SHOW TABLES;
-
-SELECT * FROM NhanVien;
-SELECT * FROM Phim;
-SELECT * FROM PhongChieu;
-SELECT * FROM SuatChieu;
-SELECT * FROM Ghe;
-SELECT * FROM Ghe_SuatChieu;
-SELECT * FROM KhachHang;
-SELECT * FROM KhuyenMai;
-SELECT * FROM HoaDon;
-SELECT * FROM Ve;
+GO
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF OBJECT_ID(N'dbo.NhanVien',N'U') IS NULL
+CREATE TABLE dbo.NhanVien(MaNhanVien varchar(10) PRIMARY KEY,TenNhanVien nvarchar(100) NOT NULL,NgaySinh date NOT NULL,GioiTinh nvarchar(10) NOT NULL,SoDienThoai varchar(15) NOT NULL,Email nvarchar(100),DiaChi nvarchar(200),ChucVu nvarchar(50));
+IF OBJECT_ID(N'dbo.Phim',N'U') IS NULL
+CREATE TABLE dbo.Phim(MaPhim varchar(10) PRIMARY KEY,TenPhim nvarchar(100) NOT NULL,TheLoai nvarchar(50) NOT NULL,ThoiLuong int NOT NULL CHECK(ThoiLuong>0),TrangThai nvarchar(30) NOT NULL,MoTa nvarchar(1000),DaoDien nvarchar(100),DienVien nvarchar(500),GioiHanTuoi nvarchar(20),NgayKhoiChieu date,PosterPath nvarchar(500));
+IF OBJECT_ID(N'dbo.PhongChieu',N'U') IS NULL
+CREATE TABLE dbo.PhongChieu(MaPhongChieu varchar(10) PRIMARY KEY,TenPhong nvarchar(50) NOT NULL,SucChua int NOT NULL DEFAULT 0);
+IF OBJECT_ID(N'dbo.SuatChieu',N'U') IS NULL
+CREATE TABLE dbo.SuatChieu(MaSuatChieu varchar(10) PRIMARY KEY,MaPhim varchar(10) NOT NULL REFERENCES dbo.Phim(MaPhim),MaPhongChieu varchar(10) NOT NULL REFERENCES dbo.PhongChieu(MaPhongChieu),GioBatDau datetime NOT NULL,GioKetThuc datetime NOT NULL,GiaVe decimal(12,2) NOT NULL DEFAULT 100000,TrangThai nvarchar(30) NOT NULL DEFAULT N'Đang Mở Bán',CHECK(GioKetThuc>GioBatDau));
+IF OBJECT_ID(N'dbo.Ghe',N'U') IS NULL
+CREATE TABLE dbo.Ghe(MaGhe varchar(10) PRIMARY KEY,MaPhongChieu varchar(10) NOT NULL REFERENCES dbo.PhongChieu(MaPhongChieu),ViTri nvarchar(20) NOT NULL,LoaiGhe nvarchar(20) NOT NULL DEFAULT N'Thường',UNIQUE(MaPhongChieu,ViTri));
+IF OBJECT_ID(N'dbo.Ghe_SuatChieu',N'U') IS NULL
+CREATE TABLE dbo.Ghe_SuatChieu(MaSuatChieu varchar(10) NOT NULL REFERENCES dbo.SuatChieu(MaSuatChieu),MaGhe varchar(10) NOT NULL REFERENCES dbo.Ghe(MaGhe),TrangThai nvarchar(20) NOT NULL DEFAULT N'Trống',PRIMARY KEY(MaSuatChieu,MaGhe));
+IF OBJECT_ID(N'dbo.KhachHang',N'U') IS NULL
+CREATE TABLE dbo.KhachHang(MaKhachHang varchar(10) PRIMARY KEY,TenKhachHang nvarchar(100) NOT NULL,SoDienThoai varchar(15) NOT NULL,Email nvarchar(100),NgaySinh date,GioiTinh nvarchar(10),DiemTichLuy int NOT NULL DEFAULT 0);
+IF OBJECT_ID(N'dbo.KhuyenMai',N'U') IS NULL
+CREATE TABLE dbo.KhuyenMai(MaKhuyenMai varchar(10) PRIMARY KEY,TenKhuyenMai nvarchar(100),MoTa nvarchar(200) NOT NULL,PhanTramGiam decimal(5,2) NOT NULL CHECK(PhanTramGiam BETWEEN 0 AND 100),NgayBatDau date,NgayKetThuc date);
+IF OBJECT_ID(N'dbo.HoaDon',N'U') IS NULL
+CREATE TABLE dbo.HoaDon(MaHoaDon varchar(10) PRIMARY KEY,NgayLap datetime NOT NULL,MaNhanVien varchar(10) NOT NULL REFERENCES dbo.NhanVien(MaNhanVien),MaKhachHang varchar(10) NULL REFERENCES dbo.KhachHang(MaKhachHang),TongTien decimal(12,2) NOT NULL CHECK(TongTien>=0),MaKhuyenMai varchar(10) NULL REFERENCES dbo.KhuyenMai(MaKhuyenMai),PhuongThucThanhToan nvarchar(50) NOT NULL DEFAULT N'Tiền mặt');
+IF OBJECT_ID(N'dbo.Ve',N'U') IS NULL
+CREATE TABLE dbo.Ve(MaVe varchar(10) PRIMARY KEY,MaSuatChieu varchar(10) NOT NULL REFERENCES dbo.SuatChieu(MaSuatChieu),MaGhe varchar(10) NOT NULL REFERENCES dbo.Ghe(MaGhe),MaHoaDon varchar(10) NOT NULL REFERENCES dbo.HoaDon(MaHoaDon),GiaTien decimal(12,2) NOT NULL,UNIQUE(MaSuatChieu,MaGhe));
+IF OBJECT_ID(N'dbo.TaiKhoanUngDung',N'U') IS NULL
+CREATE TABLE dbo.TaiKhoanUngDung(TenDangNhap varchar(50) PRIMARY KEY,MatKhauHash varchar(200) NOT NULL,MaNhanVien varchar(10) NOT NULL REFERENCES dbo.NhanVien(MaNhanVien),HoatDong bit NOT NULL DEFAULT 1);
+COMMIT;
+GO
+-- Bổ sung cột cho các bản dự án đã có dữ liệu.
+IF COL_LENGTH('dbo.Phim','PosterPath') IS NULL ALTER TABLE dbo.Phim ADD PosterPath nvarchar(500) NULL;
+IF COL_LENGTH('dbo.Phim','MoTa') IS NULL ALTER TABLE dbo.Phim ADD MoTa nvarchar(1000) NULL;
+IF COL_LENGTH('dbo.Phim','DaoDien') IS NULL ALTER TABLE dbo.Phim ADD DaoDien nvarchar(100) NULL;
+IF COL_LENGTH('dbo.Phim','DienVien') IS NULL ALTER TABLE dbo.Phim ADD DienVien nvarchar(500) NULL;
+IF COL_LENGTH('dbo.Phim','GioiHanTuoi') IS NULL ALTER TABLE dbo.Phim ADD GioiHanTuoi nvarchar(20) NULL;
+IF COL_LENGTH('dbo.Phim','NgayKhoiChieu') IS NULL ALTER TABLE dbo.Phim ADD NgayKhoiChieu date NULL;
+IF COL_LENGTH('dbo.NhanVien','ChucVu') IS NULL ALTER TABLE dbo.NhanVien ADD ChucVu nvarchar(50) NULL;
+IF COL_LENGTH('dbo.SuatChieu','GiaVe') IS NULL ALTER TABLE dbo.SuatChieu ADD GiaVe decimal(12,2) NOT NULL DEFAULT 100000;
+IF COL_LENGTH('dbo.SuatChieu','TrangThai') IS NULL ALTER TABLE dbo.SuatChieu ADD TrangThai nvarchar(30) NOT NULL DEFAULT N'Đang Mở Bán';
+IF COL_LENGTH('dbo.Ghe','ViTri') IS NULL ALTER TABLE dbo.Ghe ADD ViTri nvarchar(20) NULL;
+IF COL_LENGTH('dbo.Ghe','LoaiGhe') IS NULL ALTER TABLE dbo.Ghe ADD LoaiGhe nvarchar(20) NOT NULL DEFAULT N'Thường';
+IF COL_LENGTH('dbo.KhachHang','NgaySinh') IS NULL ALTER TABLE dbo.KhachHang ADD NgaySinh date NULL;
+IF COL_LENGTH('dbo.KhachHang','GioiTinh') IS NULL ALTER TABLE dbo.KhachHang ADD GioiTinh nvarchar(10) NULL;
+IF COL_LENGTH('dbo.KhachHang','DiemTichLuy') IS NULL ALTER TABLE dbo.KhachHang ADD DiemTichLuy int NOT NULL DEFAULT 0;
+IF COL_LENGTH('dbo.KhuyenMai','TenKhuyenMai') IS NULL ALTER TABLE dbo.KhuyenMai ADD TenKhuyenMai nvarchar(100) NULL;
+IF COL_LENGTH('dbo.KhuyenMai','NgayBatDau') IS NULL ALTER TABLE dbo.KhuyenMai ADD NgayBatDau date NULL;
+IF COL_LENGTH('dbo.KhuyenMai','NgayKetThuc') IS NULL ALTER TABLE dbo.KhuyenMai ADD NgayKetThuc date NULL;
+IF COL_LENGTH('dbo.HoaDon','PhuongThucThanhToan') IS NULL ALTER TABLE dbo.HoaDon ADD PhuongThucThanhToan nvarchar(50) NOT NULL DEFAULT N'Tiền mặt';
+IF COL_LENGTH('dbo.Ve','MaHoaDon') IS NULL ALTER TABLE dbo.Ve ADD MaHoaDon varchar(10) NULL;
+GO
+-- Chỉ nạp dữ liệu minh họa khi chưa có nhân viên/phòng/phim.
+IF NOT EXISTS(SELECT 1 FROM NhanVien)
+INSERT INTO NhanVien(MaNhanVien,TenNhanVien,NgaySinh,GioiTinh,SoDienThoai,ChucVu) VALUES('NV001',N'Nhân viên mẫu','2000-01-01',N'Nam','0900000000',N'Nhân viên');
+IF NOT EXISTS(SELECT 1 FROM PhongChieu)
+INSERT INTO PhongChieu(MaPhongChieu,TenPhong,SucChua) VALUES('PC01',N'Phòng 1',0),('PC02',N'Phòng 2',0);
+IF NOT EXISTS(SELECT 1 FROM Phim)
+INSERT INTO Phim(MaPhim,TenPhim,TheLoai,ThoiLuong,TrangThai,PosterPath) VALUES('PH001',N'Avengers: Endgame',N'Hành động',180,N'Đang Chiếu','img/avengers.jpg'),('PH002',N'Frozen II',N'Hoạt hình',103,N'Đang Chiếu','img/frozen2.jpg');
+GO

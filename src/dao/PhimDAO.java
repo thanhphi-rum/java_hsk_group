@@ -1,6 +1,7 @@
 package dao;
 
 import connect.ConnectDB;
+
 import entity.Phim;
 
 import java.sql.*;
@@ -23,14 +24,30 @@ public class PhimDAO {
         String gioiHanTuoi = rs.getString("GioiHanTuoi");
         java.sql.Date nkc = rs.getDate("NgayKhoiChieu");
         LocalDate ngayKhoiChieu = (nkc == null) ? null : nkc.toLocalDate();
-        return new Phim(maPhim, tenPhim, theLoai, thoiLuong, trangThai, moTa, daoDien, dienVien, gioiHanTuoi, ngayKhoiChieu);
+        Phim phim =
+                new Phim(
+                        maPhim,
+                        tenPhim,
+                        theLoai,
+                        thoiLuong,
+                        trangThai,
+                        moTa,
+                        daoDien,
+                        dienVien,
+                        gioiHanTuoi,
+                        ngayKhoiChieu);
+        phim.setPosterPath(rs.getString("PosterPath"));
+        return phim;
     }
 
     // Thêm Phim
     public boolean themPhim(Phim phim) {
-        String sql = "INSERT INTO Phim (MaPhim, TenPhim, TheLoai, ThoiLuong, TrangThai, MoTa, DaoDien, DienVien, GioiHanTuoi, NgayKhoiChieu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql =
+                "INSERT INTO Phim (MaPhim, TenPhim, TheLoai, ThoiLuong, TrangThai, MoTa, DaoDien,"
+                    + " DienVien, GioiHanTuoi, NgayKhoiChieu, PosterPath) VALUES (?, ?, ?, ?, ?, ?,"
+                    + " ?, ?, ?, ?, ?)";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, phim.getMaPhim());
             ps.setString(2, phim.getTenPhim());
             ps.setString(3, phim.getTheLoai());
@@ -40,7 +57,12 @@ public class PhimDAO {
             ps.setString(7, phim.getDaoDien());
             ps.setString(8, phim.getDienVien());
             ps.setString(9, phim.getGioiHanTuoi());
-            ps.setDate(10, phim.getNgayKhoiChieu() == null ? null : java.sql.Date.valueOf(phim.getNgayKhoiChieu()));
+            ps.setDate(
+                    10,
+                    phim.getNgayKhoiChieu() == null
+                            ? null
+                            : java.sql.Date.valueOf(phim.getNgayKhoiChieu()));
+            ps.setString(11, phim.getPosterPath());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -50,9 +72,12 @@ public class PhimDAO {
 
     // Sửa Phim
     public boolean suaPhim(Phim phim) {
-        String sql = "UPDATE Phim SET TenPhim = ?, TheLoai = ?, ThoiLuong = ?, TrangThai = ?, MoTa = ?, DaoDien = ?, DienVien = ?, GioiHanTuoi = ?, NgayKhoiChieu = ? WHERE MaPhim = ?";
+        String sql =
+                "UPDATE Phim SET TenPhim = ?, TheLoai = ?, ThoiLuong = ?, TrangThai = ?, MoTa = ?,"
+                    + " DaoDien = ?, DienVien = ?, GioiHanTuoi = ?, NgayKhoiChieu = ?, PosterPath ="
+                    + " ? WHERE MaPhim = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, phim.getTenPhim());
             ps.setString(2, phim.getTheLoai());
             ps.setInt(3, phim.getThoiLuong());
@@ -61,8 +86,13 @@ public class PhimDAO {
             ps.setString(6, phim.getDaoDien());
             ps.setString(7, phim.getDienVien());
             ps.setString(8, phim.getGioiHanTuoi());
-            ps.setDate(9, phim.getNgayKhoiChieu() == null ? null : java.sql.Date.valueOf(phim.getNgayKhoiChieu()));
-            ps.setString(10, phim.getMaPhim());
+            ps.setDate(
+                    9,
+                    phim.getNgayKhoiChieu() == null
+                            ? null
+                            : java.sql.Date.valueOf(phim.getNgayKhoiChieu()));
+            ps.setString(10, phim.getPosterPath());
+            ps.setString(11, phim.getMaPhim());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -74,7 +104,7 @@ public class PhimDAO {
     public boolean xoaPhim(String maPhim) {
         String sql = "DELETE FROM Phim WHERE MaPhim = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maPhim);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -88,8 +118,8 @@ public class PhimDAO {
         List<Phim> danhSachPhim = new ArrayList<>();
         String sql = "SELECT * FROM Phim";
         try (Connection conn = ConnectDB.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 danhSachPhim.add(taoPhim(rs));
             }
@@ -102,7 +132,7 @@ public class PhimDAO {
     public Phim layPhimTheoMa(String maPhim) {
         String sql = "SELECT * FROM Phim WHERE MaPhim = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maPhim);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -120,7 +150,7 @@ public class PhimDAO {
         List<Phim> danhSachPhim = new ArrayList<>();
         String sql = "SELECT * FROM Phim WHERE MaPhim LIKE ? OR TenPhim LIKE ? OR TheLoai LIKE ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             String pattern = "%" + keyword + "%";
             ps.setString(1, pattern); // Tìm theo mã phim
             ps.setString(2, pattern); // Tìm theo tên phim

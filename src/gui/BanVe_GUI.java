@@ -1,645 +1,343 @@
 package gui;
 
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Paragraph;
-import com.itextpdf.text.pdf.BaseFont;
-import com.itextpdf.text.pdf.PdfWriter;
-import connect.ConnectDB;
-import dao.GheDAO;
-import dao.KhuyenMaiDAO;
-import dao.HoaDonDAO;
-import dao.VeDAO;
-import entity.Ghe;
-import entity.GheSuatChieu;
-import entity.KhuyenMai;
-import entity.HoaDon;
-import entity.Ve;
-import entity.NhanVien;
-import entity.KhachHang;
-import entity.SuatChieu;
+import entity.GheBanVe;
+import entity.LuaChonBanVe;
+
+import service.BanVeService;
+import service.Session;
+import service.ThanhToanService;
+
+import java.awt.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
-public class BanVe_GUI extends JFrame {
-    private JComboBox<String> cbPhim, cbPhongChieu, cbSuatChieu, cbNhanVien, cbKhachHang, cbKhuyenMai;
-    private JPanel pnlSoDoGhe;
-    private JTextArea txtThongTinHoaDon;
-    private JButton btnInHoaDon, btnLuu, btnLamMoi, btnThemKhuyenMai;
-    private int soGheDaChon = 0;
-    private double tongTien = 0.0;
+/** Màn hình chỉ dựng giao diện và nhận thao tác; nghiệp vụ được gọi qua BanVeService. */
+public class BanVe_GUI extends JPanel {
+    private final BanVeService service = new BanVeService();
+    private final boolean staff = Session.isStaff();
+    private final JComboBox<LuaChonBanVe> movies = new JComboBox<>();
+    private final JComboBox<LuaChonBanVe> shows = new JComboBox<>();
+    private final JComboBox<LuaChonBanVe> customers = new JComboBox<>();
+    private final JComboBox<LuaChonBanVe> promotions = new JComboBox<>();
+    private final JPanel seatsPanel = new JPanel();
+    private final JTextArea summary = new JTextArea(12, 24);
+    private final JButton print = new JButton("Xuất PDF hóa đơn vừa lưu");
+    // Lưu mã ghế riêng với tên hiển thị; không suy ra lựa chọn từ màu nút.
+    private final Map<String, String> selected = new LinkedHashMap<>();
+    private boolean loading;
+    private entity.DatCho lastBooking;
+    private String lastInvoice;
 
-    private KhuyenMaiDAO khuyenMaiDAO;
-    private GheDAO gheDAO;
-    private HoaDonDAO hoaDonDAO;
-    private VeDAO veDAO;
-
-
-    public BanVe_GUI(String maPhim) {
-        setTitle("Bán Vé - Rạp Chiếu Phim");
-        setExtendedState(JFrame.MAXIMIZED_BOTH); // Mở rộng màn hình full
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setResizable(false);
-
-        khuyenMaiDAO = new KhuyenMaiDAO();
-        gheDAO = new GheDAO();
-        hoaDonDAO = new HoaDonDAO();
-        veDAO = new VeDAO();
-
-        setLayout(new BorderLayout());
-
-        // Thêm menu từ Menu_GUI
-        JPanel menuPanel = new Menu_GUI(this);
-        add(menuPanel, BorderLayout.NORTH);
-
-        // Panel chọn thông tin phim, phòng chiếu, suất chiếu, nhân viên, khách hàng, khuyến mãi
-        JPanel pnlThongTin = new JPanel(new GridLayout(6, 2, 10, 10));
-        pnlThongTin.setBorder(BorderFactory.createTitledBorder("Chọn Thông Tin"));
-
-        cbPhim = new JComboBox<>();
-        cbPhongChieu = new JComboBox<>();
-        cbSuatChieu = new JComboBox<>();
-        cbNhanVien = new JComboBox<>();
-        cbKhachHang = new JComboBox<>();
-        cbKhuyenMai = new JComboBox<>();
-
-        pnlThongTin.add(new JLabel("Chọn Phim:"));
-        pnlThongTin.add(cbPhim);
-        pnlThongTin.add(new JLabel("Chọn Phòng Chiếu:"));
-        pnlThongTin.add(cbPhongChieu);
-        pnlThongTin.add(new JLabel("Chọn Suất Chiếu:"));
-        pnlThongTin.add(cbSuatChieu);
-        pnlThongTin.add(new JLabel("Chọn Nhân Viên:"));
-        pnlThongTin.add(cbNhanVien);
-        pnlThongTin.add(new JLabel("Chọn Khách Hàng:"));
-        pnlThongTin.add(cbKhachHang);
-        pnlThongTin.add(new JLabel("Chọn Khuyến Mãi:"));
-        pnlThongTin.add(cbKhuyenMai);
-
-        add(pnlThongTin, BorderLayout.WEST);
-
-        // Panel sơ đồ ghế
-        pnlSoDoGhe = new JPanel(new GridLayout(10, 10, 5, 5));
-        pnlSoDoGhe.setBorder(BorderFactory.createTitledBorder("Sơ Đồ Phòng Chiếu"));
-        add(pnlSoDoGhe, BorderLayout.CENTER);
-
-        // Panel thông tin hóa đơn
-        JPanel pnlHoaDon = new JPanel(new BorderLayout());
-        pnlHoaDon.setBorder(BorderFactory.createTitledBorder("Thông Tin Hóa Đơn"));
-
-        txtThongTinHoaDon = new JTextArea(10, 30);
-        txtThongTinHoaDon.setEditable(false);
-        pnlHoaDon.add(new JScrollPane(txtThongTinHoaDon), BorderLayout.CENTER);
-
-        JPanel pnlButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnInHoaDon = new JButton("In Hóa Đơn");
-        btnLuu = new JButton("Lưu");
-        btnLamMoi = new JButton("Làm Mới");
-        btnThemKhuyenMai = new JButton("Thêm Khuyến Mãi");
-
-        pnlButtons.add(btnThemKhuyenMai);
-        pnlButtons.add(btnInHoaDon);
-        pnlButtons.add(btnLuu);
-        pnlButtons.add(btnLamMoi);
-        pnlHoaDon.add(pnlButtons, BorderLayout.SOUTH);
-
-        add(pnlHoaDon, BorderLayout.EAST);
-
-        // Load dữ liệu từ cơ sở dữ liệu
-        loadDanhSachPhim();
-        // Chọn sẵn phim ứng với mã phim
-        for (int i = 0; i < cbPhim.getItemCount(); i++) {
-            if (cbPhim.getItemAt(i).startsWith(maPhim + " -")) {
-                cbPhim.setSelectedIndex(i);
-                break;
-            }
-        }
-        
-        // Gọi thủ công hàm load danh sách phòng chiếu và suất chiếu
-        if (cbPhim.getSelectedItem() != null) {
-            String maPhimSelected = cbPhim.getSelectedItem().toString().split(" - ")[0];
-            loadDanhSachPhongChieu(maPhimSelected);
-
-            if (cbPhongChieu.getItemCount() > 0) {
-                String maPhongChieu = cbPhongChieu.getItemAt(0);
-                loadDanhSachSuatChieu(maPhongChieu, maPhimSelected);
-
-                if (cbSuatChieu.getItemCount() > 0) {
-                    String maSuatChieu = cbSuatChieu.getItemAt(0).split(" - ")[0];
-                    loadSoDoGhe(maSuatChieu);
-                }
-            }
-        }
-        loadDanhSachNhanVien();
-        loadDanhSachKhachHang();
-        loadDanhSachKhuyenMai();
-
-        // Thêm sự kiện
-        cbPhim.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    String maPhim = e.getItem().toString().split(" - ")[0];
-
-                    // Load lại phòng chiếu và suất chiếu
-                    loadDanhSachPhongChieu(maPhim);
-
-                    if (cbPhongChieu.getItemCount() > 0) {
-                        String maPhong = cbPhongChieu.getItemAt(0);
-                        loadDanhSachSuatChieu(maPhong, maPhim);
-
-                        if (cbSuatChieu.getItemCount() > 0) {
-                            String maSuatChieu = cbSuatChieu.getItemAt(0).split(" - ")[0];
-                            loadSoDoGhe(maSuatChieu);
-                        } else {
-                            cbSuatChieu.removeAllItems(); //Reset combo suất chiếu
-                            resetSoDoGhe();
-                        }
-                    } else {
-                        cbPhongChieu.removeAllItems(); // Reset combo phòng
-                        cbSuatChieu.removeAllItems();  // Reset combo suất chiếu
-                        resetSoDoGhe();
-                    }
-
-                    updateThongTinHoaDon();
-                }
-            }
-        });
-
-
-
-        cbPhongChieu.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    String maPhongChieu = e.getItem().toString().split(" - ")[0];
-                    String maPhim = cbPhim.getSelectedItem().toString().split(" - ")[0];
-                    loadDanhSachSuatChieu(maPhongChieu, maPhim);
-                    updateThongTinHoaDon();
-                }
-            }
-        });
-
-
-        cbSuatChieu.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    loadSoDoGhe(e.getItem().toString().split(" - ")[0]);
-                    updateThongTinHoaDon();
-                }
-            }
-        });
-
-        cbNhanVien.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    updateThongTinHoaDon();
-                }
-            }
-        });
-
-        cbKhachHang.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    updateThongTinHoaDon();
-                }
-            }
-        });
-
-        cbKhuyenMai.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    updateThongTinHoaDon();
-                }
-            }
-        });
-
-        btnLamMoi.addActionListener(e -> {
-            soGheDaChon = 0;
-            tongTien = 0;
-            txtThongTinHoaDon.setText("");
-
-            if (cbSuatChieu.getSelectedItem() != null) {
-                String maSuatChieu = cbSuatChieu.getSelectedItem().toString().split(" - ")[0];
-                loadSoDoGhe(maSuatChieu);
-            }
-
-            cbKhuyenMai.setSelectedIndex(0); 
-        });
-        
-        btnInHoaDon.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                try {
-                    inHoaDonPDF(); 
-                    JOptionPane.showMessageDialog(BanVe_GUI.this, "Hóa đơn đã được in thành công!");
-                } catch (DocumentException | IOException ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(BanVe_GUI.this, "Lỗi khi in hóa đơn PDF!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-
-
-        btnThemKhuyenMai.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JPanel pnlForm = new JPanel(new GridLayout(3, 2, 10, 10));
-                JTextField txtMaKhuyenMai = new JTextField();
-                JTextField txtMoTa = new JTextField();
-                JTextField txtPhanTramGiam = new JTextField();
-                pnlForm.add(new JLabel("Mã Khuyến Mãi:"));
-                pnlForm.add(txtMaKhuyenMai);
-                pnlForm.add(new JLabel("Mô Tả Khuyến Mãi:"));
-                pnlForm.add(txtMoTa);
-                pnlForm.add(new JLabel("Phần Trăm Giảm (%):"));
-                pnlForm.add(txtPhanTramGiam);
-
-                int result = JOptionPane.showConfirmDialog(BanVe_GUI.this, pnlForm, "Thêm Khuyến Mãi", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-                if (result == JOptionPane.OK_OPTION) {
-                    try {
-                        String maKhuyenMai = txtMaKhuyenMai.getText().trim();
-                        String moTa = txtMoTa.getText().trim();
-                        double phanTramGiam = Double.parseDouble(txtPhanTramGiam.getText().trim());
-
-                        if (!moTa.isEmpty() && phanTramGiam >= 0) {
-                            if (khuyenMaiDAO.kiemTraMaKhuyenMai(maKhuyenMai)) {
-                                JOptionPane.showMessageDialog(BanVe_GUI.this, "Mã khuyến mãi đã tồn tại, vui lòng nhập mã khác.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                            } else {
-                                khuyenMaiDAO.themKhuyenMai(new KhuyenMai(maKhuyenMai, moTa, moTa, phanTramGiam, LocalDate.now(), LocalDate.now().plusDays(30)));
-                                loadDanhSachKhuyenMai();
-                                JOptionPane.showMessageDialog(BanVe_GUI.this, "Thêm khuyến mãi thành công!");
-                            }
-                        } else {
-                            JOptionPane.showMessageDialog(BanVe_GUI.this, "Vui lòng nhập đầy đủ thông tin và phần trăm giảm phải lớn hơn hoặc bằng 0.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                        }
-                    } catch (NumberFormatException ex) {
-                        JOptionPane.showMessageDialog(BanVe_GUI.this, "Phần trăm giảm phải là số.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-            }
-        });
-
-        btnLuu.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-            	// Kiểm tra điều kiện trước khi lưu
-                if (cbPhongChieu.getItemCount() == 0 || cbSuatChieu.getItemCount() == 0 || soGheDaChon == 0) {
-                    JOptionPane.showMessageDialog(BanVe_GUI.this, "Không thể lưu hóa đơn vì chưa có suất chiếu hoặc chưa chọn ghế", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
-                
-                // Thu thập thông tin từ combobox
-                String maSuatChieu = cbSuatChieu.getSelectedItem().toString().split(" - ")[0];
-                String maNhanVien = cbNhanVien.getSelectedItem().toString().split(" - ")[0];
-                
-                String maKhachHang = "";
-                if(cbKhachHang.getSelectedItem() != null && !cbKhachHang.getSelectedItem().toString().equals("Khách vãng lai")){
-                    maKhachHang = cbKhachHang.getSelectedItem().toString().split(" - ")[0];
-                }
-                
-                String maKhuyenMai = "";
-                if(cbKhuyenMai.getSelectedItem() != null && !cbKhuyenMai.getSelectedItem().toString().equals("Không")){
-                    maKhuyenMai = cbKhuyenMai.getSelectedItem().toString().split(" - ")[0];
-                }
-                
-                // Lấy danh sách các mã ghế đã chọn (Màu Vàng)
-                List<String> danhSachGheDaChon = new ArrayList<>();
-                for (Component comp : pnlSoDoGhe.getComponents()) {
-                    if (comp instanceof JButton) {
-                        JButton btnGhe = (JButton) comp;
-                        if (btnGhe.getBackground() == Color.YELLOW) {
-                            danhSachGheDaChon.add(btnGhe.getText());
-                        }
-                    }
-                }
-
-                // Bắt đầu Transaction
-                try (Connection conn = ConnectDB.getConnection()) {
-                    conn.setAutoCommit(false); // Bật chế độ Transaction
-
-                    // 1. Tạo mới đối tượng Hóa Đơn và lưu xuống CSDL
-                    String maHoaDonMoi = "HD" + System.currentTimeMillis(); // Sinh mã Hóa Đơn ngẫu nhiên theo thời gian
-                    
-                    HoaDon hoaDonMoi = new HoaDon(
-                        maHoaDonMoi, 
-                        new NhanVien(maNhanVien), 
-                        new KhachHang(maKhachHang), 
-                        new KhuyenMai(maKhuyenMai), 
-                        LocalDateTime.now(), 
-                        tongTien, 
-                        "Tiền mặt"
-                    );
-
-                    boolean luuHoaDonThanhCong = hoaDonDAO.themHoaDon(conn, hoaDonMoi);
-
-                    if (!luuHoaDonThanhCong) {
-                        conn.rollback();
-                        JOptionPane.showMessageDialog(BanVe_GUI.this, "Lỗi khi lưu hóa đơn.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
-
-                    // 2. Với mỗi ghế đã chọn, lưu 1 record vào bảng Ve
-                    double giaMoiVe = tongTien / soGheDaChon;
-                    boolean loiTaoVe = false;
-
-                    for (String maGhe : danhSachGheDaChon) {
-                        String maVeMoi = "V" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-                        
-                        Ve veMoi = new Ve(
-                            maVeMoi,
-                            new SuatChieu(maSuatChieu),
-                            new Ghe(maGhe),
-                            new HoaDon(maHoaDonMoi),
-                            giaMoiVe
-                        );
-
-                        if (!veDAO.themVe(conn, veMoi)) {
-                            loiTaoVe = true;
-                            break;
-                        }
-                    }
-
-                    if (loiTaoVe) {
-                        conn.rollback();
-                        JOptionPane.showMessageDialog(BanVe_GUI.this, "Lỗi khi tạo vé chi tiết.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
-
-                    // 3. Cập nhật trạng thái các ghế vừa đặt thành "Đã đặt"
-                    for (String maGhe : danhSachGheDaChon) {
-                        gheDAO.capNhatTrangThaiGhe(maSuatChieu, maGhe, "Đã đặt");
-                    }
-
-                    // Nếu tất cả các bước trên đều thành công, Commit!
-                    conn.commit();
-                    JOptionPane.showMessageDialog(BanVe_GUI.this, "Thanh toán và lưu hóa đơn thành công!");
-                    
-                    // Reset lại giao diện
-                    soGheDaChon = 0;
-                    tongTien = 0;
-                    txtThongTinHoaDon.setText("");
-                    loadSoDoGhe(maSuatChieu);
-
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(BanVe_GUI.this, "Lỗi hệ thống trong quá trình giao dịch!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-
-        setVisible(true);
-    } 
-
-    private void loadDanhSachPhim() {
-        String sql = "SELECT MaPhim, TenPhim FROM Phim WHERE TrangThai = N'Đang Chiếu'";
-        try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                String maPhim = rs.getString("MaPhim");
-                String tenPhim = rs.getString("TenPhim");
-                cbPhim.addItem(maPhim + " - " + tenPhim);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+    public BanVe_GUI(String movieId) {
+        super(new BorderLayout(12, 12));
+        Session.requireStaff();
+        add(createFilters(), BorderLayout.NORTH);
+        add(createSeatArea(), BorderLayout.CENTER);
+        add(createPaymentArea(), BorderLayout.EAST);
+        loadFilters(movieId);
+        registerEvents();
+        loadShows();
     }
 
-    private void loadDanhSachPhongChieu(String maPhim) {
-        cbPhongChieu.removeAllItems();
-        String sql = "SELECT DISTINCT MaPhongChieu FROM SuatChieu WHERE MaPhim = ?";
-        try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, maPhim);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    String maPhongChieu = rs.getString("MaPhongChieu");
-                    cbPhongChieu.addItem(maPhongChieu);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+    // ===== 1. DỰNG GIAO DIỆN: không truy vấn SQL tại đây =====
+    private JPanel createFilters() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(
+                BorderFactory.createTitledBorder(
+                        staff ? "Thông tin bán vé" : "Chọn phim và suất chiếu"));
+        addFilter(panel, "Phim", movies, 0);
+        addFilter(panel, "Suất chiếu / phòng", shows, 1);
+        if (staff) {
+            addFilter(panel, "Khách hàng", customers, 2);
+            addFilter(panel, "Khuyến mãi", promotions, 3);
         }
+        return panel;
     }
 
-    private void loadDanhSachSuatChieu(String maPhongChieu, String maPhim) {
-        cbSuatChieu.removeAllItems();
-        String sql = "SELECT MaSuatChieu, GioBatDau, GioKetThuc FROM SuatChieu WHERE MaPhongChieu = ? AND MaPhim = ?";
-        try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, maPhongChieu);
-            ps.setString(2, maPhim);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    String maSuatChieu = rs.getString("MaSuatChieu");
-                    String gioBatDau = rs.getString("GioBatDau");
-                    String gioKetThuc = rs.getString("GioKetThuc");
-                    cbSuatChieu.addItem(maSuatChieu + " - " + gioBatDau + " - " + gioKetThuc);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+    private JPanel createSeatArea() {
+        JPanel panel = new JPanel(new BorderLayout(8, 10));
+        JLabel screen = new JLabel("MÀN HÌNH", SwingConstants.CENTER);
+        screen.setOpaque(true);
+
+        screen.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        panel.add(screen, BorderLayout.NORTH);
+        seatsPanel.setLayout(new BoxLayout(seatsPanel, BoxLayout.Y_AXIS));
+        panel.add(new JScrollPane(seatsPanel), BorderLayout.CENTER);
+        panel.add(
+                new JLabel("Nhấn ghế để chọn hoặc bỏ chọn. Ghế bị khóa không thể bán."),
+                BorderLayout.SOUTH);
+        return panel;
     }
 
-
-    private void loadDanhSachNhanVien() {
-        String sql = "SELECT MaNhanVien, TenNhanVien FROM NhanVien";
-        try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                String maNhanVien = rs.getString("MaNhanVien");
-                String tenNhanVien = rs.getString("TenNhanVien");
-                cbNhanVien.addItem(maNhanVien + " - " + tenNhanVien);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void loadDanhSachKhachHang() {
-        cbKhachHang.addItem("Khách vãng lai"); // Cho phép không chọn khách hàng
-        String sql = "SELECT MaKhachHang, TenKhachHang FROM KhachHang";
-        try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                String maKhachHang = rs.getString("MaKhachHang");
-                String tenKhachHang = rs.getString("TenKhachHang");
-                cbKhachHang.addItem(maKhachHang + " - " + tenKhachHang);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void loadDanhSachKhuyenMai() {
-        cbKhuyenMai.removeAllItems();
-        cbKhuyenMai.addItem("Không"); // Cho phép không chọn KM
-        for (KhuyenMai khuyenMai : khuyenMaiDAO.layTatCaKhuyenMai()) {
-            cbKhuyenMai.addItem(khuyenMai.getMaKhuyenMai() + " - " + khuyenMai.getMoTa() + " - " + khuyenMai.getPhanTramGiam() + "%");
-        }
-    }
-
-    private void loadSoDoGhe(String maSuatChieu) {
-        pnlSoDoGhe.removeAll();
-
-        List<GheSuatChieu> gheList = gheDAO.layGheTheoMaSuatChieu(maSuatChieu);
-        for (GheSuatChieu gsc : gheList) {
-            Ghe ghe = gsc.getGhe();
-            JButton btnGhe = new JButton(String.valueOf(ghe.getMaGhe()));
-
-            if ("Đã đặt".equalsIgnoreCase(gsc.getTrangThai())) {
-                btnGhe.setBackground(Color.RED);
-                btnGhe.setEnabled(false);
-            } else {
-                btnGhe.setBackground(Color.GRAY);
-                btnGhe.addActionListener(e -> {
-                    if (btnGhe.getBackground() == Color.GRAY) {
-                        btnGhe.setBackground(Color.YELLOW);
-                        soGheDaChon++;
-                    } else if (btnGhe.getBackground() == Color.YELLOW) {
-                        btnGhe.setBackground(Color.GRAY);
-                        soGheDaChon--;
-                    }
-                    updateThongTinHoaDon();
+    private JPanel createPaymentArea() {
+        JPanel panel = new JPanel(new BorderLayout(8, 10));
+        panel.setPreferredSize(new Dimension(285, 0));
+        panel.setBorder(BorderFactory.createTitledBorder("Thông tin hóa đơn"));
+        summary.setEditable(false);
+        summary.setLineWrap(true);
+        summary.setWrapStyleWord(true);
+        summary.setMargin(new Insets(12, 12, 12, 12));
+        panel.add(new JScrollPane(summary), BorderLayout.CENTER);
+        JPanel actions = new JPanel(new GridLayout(0, 1, 0, 8));
+        JButton save = new JButton(staff ? "Thanh toán / Lưu hóa đơn" : "Đặt vé / Giữ chỗ");
+        JButton refresh = new JButton("Bỏ chọn / Làm mới ghế");
+        actions.add(save);
+        if (staff) actions.add(print);
+        actions.add(refresh);
+        print.setEnabled(false);
+        print.addActionListener(
+                e -> {
+                    if (lastInvoice != null) HoaDonPDF.chonNoiLuu(this, lastInvoice);
                 });
+        refresh.addActionListener(e -> loadSeats());
+        save.addActionListener(e -> save());
+        panel.add(actions, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private static void addFilter(JPanel panel, String label, JComponent field, int row) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridy = row;
+        constraints.gridx = 0;
+        constraints.insets = new Insets(4, 8, 4, 12);
+        constraints.anchor = GridBagConstraints.WEST;
+        JLabel text = new JLabel(label);
+        text.setPreferredSize(new Dimension(145, 24));
+        panel.add(text, constraints);
+        constraints.gridx = 1;
+        constraints.weightx = 1;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(field, constraints);
+    }
+
+    private void registerEvents() {
+        movies.addActionListener(
+                e -> {
+                    if (!loading) loadShows();
+                });
+        shows.addActionListener(
+                e -> {
+                    if (!loading) loadSeats();
+                });
+        promotions.addActionListener(e -> updateSummary());
+        customers.addActionListener(e -> updateSummary());
+    }
+
+    // ===== 2. TẢI DỮ LIỆU: lấy DTO qua service, GUI không biết câu lệnh SQL =====
+    private void loadFilters(String movieId) {
+        loading = true;
+        customers.addItem(new LuaChonBanVe(null, "Khách vãng lai", BigDecimal.ZERO));
+        promotions.addItem(new LuaChonBanVe(null, "Không áp dụng", BigDecimal.ZERO));
+        try {
+            for (LuaChonBanVe movie : service.phimDangChieu()) {
+                movies.addItem(movie);
+                if (movie.id().equals(movieId)) movies.setSelectedItem(movie);
             }
-
-            pnlSoDoGhe.add(btnGhe);
+            if (staff) {
+                for (LuaChonBanVe customer : service.khachHang()) customers.addItem(customer);
+                for (LuaChonBanVe promotion : service.khuyenMai()) promotions.addItem(promotion);
+            }
+        } catch (Exception ex) {
+            error(ex);
+        } finally {
+            loading = false;
         }
-
-        pnlSoDoGhe.revalidate();
-        pnlSoDoGhe.repaint();	
-    }
-    
-    private void resetSoDoGhe() {
-        pnlSoDoGhe.removeAll();
-        pnlSoDoGhe.revalidate();
-        pnlSoDoGhe.repaint();
     }
 
-    private void updateThongTinHoaDon() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Thông Tin Hóa Đơn:");
-        
-        if (cbPhim.getSelectedItem() != null) {
-            sb.append("Phim: ").append(cbPhim.getSelectedItem().toString()).append(""); 
+    /** Đổi phim: tải lại suất, sau đó xóa lựa chọn ghế của suất cũ. */
+    private void loadShows() {
+        loading = true;
+        shows.removeAllItems();
+        LuaChonBanVe movie = choice(movies);
+        try {
+            if (movie != null) {
+                for (LuaChonBanVe show : service.suatChieu(movie.id())) shows.addItem(show);
+            }
+        } catch (Exception ex) {
+            error(ex);
+        } finally {
+            loading = false;
         }
+        loadSeats();
+    }
 
-        if (cbSuatChieu.getSelectedItem() != null) {
-            sb.append("Mã Suất Chiếu: ").append(cbSuatChieu.getSelectedItem().toString()).append("");
-        }
-
-        StringBuilder danhSachGhe = new StringBuilder();
-        for (Component comp : pnlSoDoGhe.getComponents()) {
-            if (comp instanceof JButton) {
-                JButton btnGhe = (JButton) comp;
-                if (btnGhe.getBackground() == Color.YELLOW) {
-                    if (danhSachGhe.length() > 0) {
-                        danhSachGhe.append(", ");
+    /** Đổi suất/làm mới: không giữ lại số ghế hoặc tổng tiền của lần chọn trước. */
+    private void loadSeats() {
+        selected.clear();
+        seatsPanel.removeAll();
+        LuaChonBanVe show = choice(shows);
+        Map<String, JPanel> rows = new LinkedHashMap<>();
+        try {
+            if (show != null) {
+                for (GheBanVe seat : service.gheTheoSuat(show.id())) {
+                    JPanel row = rows.get(seat.dayGhe());
+                    if (row == null) {
+                        row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
+                        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+                        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+                        row.add(new JLabel(seat.dayGhe() + "  "));
+                        rows.put(seat.dayGhe(), row);
+                        seatsPanel.add(row);
                     }
-                    danhSachGhe.append(btnGhe.getText());
+                    row.add(createSeatButton(seat));
                 }
             }
+        } catch (Exception ex) {
+            error(ex);
         }
-        if (danhSachGhe.length() > 0) {
-            sb.append("Mã Ghế: ").append(danhSachGhe.toString()).append("");
+        if (seatsPanel.getComponentCount() == 0) {
+            seatsPanel.add(
+                    new JLabel(
+                            show == null
+                                    ? "Chưa có suất chiếu đang mở bán."
+                                    : "Chưa có ghế khả dụng cho suất này."));
         }
-
-        sb.append("Ngày Lập: ").append(LocalDate.now()).append("");
-
-        if (cbNhanVien.getSelectedItem() != null) {
-            sb.append("Mã Nhân Viên: ").append(cbNhanVien.getSelectedItem().toString()).append("");
-        }
-        
-        if (cbKhachHang.getSelectedItem() != null && !cbKhachHang.getSelectedItem().toString().equals("Khách vãng lai")) {
-            sb.append("Mã Khách Hàng: ").append(cbKhachHang.getSelectedItem().toString()).append("");
-        }
-        
-        if (cbKhuyenMai.getSelectedItem() != null && !cbKhuyenMai.getSelectedItem().toString().equals("Không")) {
-            String selectedKhuyenMai = cbKhuyenMai.getSelectedItem().toString();
-            sb.append("Mã Khuyến Mãi: ").append(selectedKhuyenMai).append("");
-            String[] khuyenMaiParts = selectedKhuyenMai.split(" - ");
-            if (khuyenMaiParts.length > 2) {
-                try {
-                    double phanTramGiam = Double.parseDouble(khuyenMaiParts[2].replace("%", ""));
-                    tongTien = (soGheDaChon * 100000) * (1 - phanTramGiam / 100);
-                } catch (NumberFormatException ex) {
-                    ex.printStackTrace();
-                }
-            }
-        } else {
-            tongTien = soGheDaChon * 100000;
-        }
-
-        if (tongTien < 0) {
-            tongTien = 0;
-        }
-        sb.append("Tổng Tiền: ").append(String.format("%,.0f VNĐ", tongTien)).append("");
-
-        txtThongTinHoaDon.setText(sb.toString());
+        seatsPanel.revalidate();
+        seatsPanel.repaint();
+        updateSummary();
     }
 
-    private void inHoaDonPDF() throws DocumentException, IOException {
-        Document document = new Document(PageSize.A4);
+    private JToggleButton createSeatButton(GheBanVe seat) {
+        JToggleButton button = new JToggleButton(seat.location());
+        button.setPreferredSize(new Dimension(55, 38));
+        button.setMargin(new Insets(2, 2, 2, 2));
+        button.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        button.setToolTipText(seat.location() + " - " + seat.status());
+        button.setEnabled(seat.conTrong());
 
-        int count = 0;
-        String fileName;
-        do {
-            fileName = String.format("HoaDon/HoaDon%s.pdf", count == 0 ? "" : String.format("_%02d", count));
-            count++;
-        } while (new File(fileName).exists());
+        button.addActionListener(
+                e -> {
+                    if (button.isSelected()) selected.put(seat.id(), seat.location());
+                    else selected.remove(seat.id());
 
-        PdfWriter.getInstance(document, new FileOutputStream(fileName));
-        document.open();
-
-        BaseFont baseFont = BaseFont.createFont("fonts/ARIAL.TTF", BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
-        Font fontTitle = new Font(baseFont, 18, Font.BOLD);
-        Font fontContent = new Font(baseFont, 12, Font.NORMAL);
-
-        Paragraph title = new Paragraph("HÓA ĐƠN BÁN VÉ RẠP CHIẾU PHIM", fontTitle);
-        title.setAlignment(Element.ALIGN_CENTER);
-        document.add(title);
-        document.add(new Paragraph(""));
-
-        String[] lines = txtThongTinHoaDon.getText().split("");
-        for (String line : lines) {
-            document.add(new Paragraph(line, fontContent));
-        }
-
-        document.close();
+                    updateSummary();
+                });
+        return button;
     }
 
+    // ===== 3. TẠM TÍNH: chỉ hiển thị, chưa ghi hóa đơn hay doanh thu =====
+    private BigDecimal total() {
+        LuaChonBanVe show = choice(shows);
+        LuaChonBanVe promotion = choice(promotions);
+        if (show == null || selected.isEmpty()) return BigDecimal.ZERO;
+        return ThanhToanService.tinhTongTien(
+                show.amount(),
+                selected.size(),
+                promotion == null ? BigDecimal.ZERO : promotion.amount());
+    }
+
+    private void updateSummary() {
+        LuaChonBanVe movie = choice(movies);
+        LuaChonBanVe show = choice(shows);
+        StringBuilder text = new StringBuilder();
+        text.append("Phim: ").append(movie == null ? "—" : movie.label());
+        text.append("\n\nSuất: ").append(show == null ? "—" : show.label());
+        text.append("\n\nGhế: ").append(String.join(", ", selected.values()));
+        text.append("\nSố vé: ").append(selected.size());
+        text.append("\n\nĐơn giá: ")
+                .append(show == null ? "—" : String.format("%,.0f đ", show.amount()));
+        text.append("\n\nTổng tiền: ").append(String.format("%,.0f đ", total()));
+        if (staff) text.append("\n\nThanh toán tiền mặt\nNhân viên: ").append(Session.tenNhanVien);
+        else
+            text.append(
+                    "\n\n"
+                        + "Không cần tài khoản. Giữ chỗ tối đa 10 phút; mang mã đến quầy thanh toán"
+                        + " trước hạn.");
+        if (lastBooking != null)
+            text.append("\n\nMã vừa đặt: ")
+                    .append(lastBooking.id())
+                    .append("\nGiữ đến: ")
+                    .append(lastBooking.expires());
+        if (lastInvoice != null) text.append("\n\nHóa đơn vừa lưu: ").append(lastInvoice);
+        summary.setText(text.toString());
+    }
+
+    // ===== 4. HÀNH ĐỘNG: tách đặt chỗ của khách và thu tiền của nhân viên =====
+    private void save() {
+        LuaChonBanVe show = choice(shows);
+        if (show == null || selected.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn suất chiếu và ít nhất một ghế.");
+            return;
+        }
+        if (staff) payAtCounter(show);
+        else reserveForGuest(show);
+    }
+
+    private void reserveForGuest(LuaChonBanVe show) {
+        if (JOptionPane.showConfirmDialog(
+                        this,
+                        "Giữ "
+                                + selected.size()
+                                + " ghế tối đa 10 phút và thanh toán tại quầy trước hạn?",
+                        "Đặt vé không cần tài khoản",
+                        JOptionPane.YES_NO_OPTION)
+                != JOptionPane.YES_OPTION) return;
+        try {
+            lastBooking = service.datCho(show.id(), new ArrayList<>(selected.keySet()));
+            loadSeats();
+            JTextArea receipt =
+                    new JTextArea(
+                            lastBooking.description()
+                                    + "\n\n"
+                                    + "Vui lòng lưu mã và đến quầy trước hạn.\n"
+                                    + "Đây là phiếu giữ chỗ, chưa phải vé đã thanh toán.");
+            receipt.setEditable(false);
+            receipt.setRows(14);
+            receipt.setColumns(42);
+            receipt.setCaretPosition(0);
+            JOptionPane.showMessageDialog(
+                    this,
+                    new JScrollPane(receipt),
+                    "Đặt vé thành công",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            error(ex);
+            loadSeats();
+        }
+    }
+
+    /** Hủy hộp thoại/thiếu tiền: dừng trước khi gọi service ghi dữ liệu. */
+    private void payAtCounter(LuaChonBanVe show) {
+        BigDecimal approvedTotal = total();
+        if (!ThanhToanDialog.xacNhan(this, approvedTotal)) return;
+        LuaChonBanVe customer = choice(customers);
+        LuaChonBanVe promotion = choice(promotions);
+        try {
+            lastInvoice =
+                    service.banTaiQuay(
+                            show.id(),
+                            new ArrayList<>(selected.keySet()),
+                            customer == null ? null : customer.id(),
+                            promotion == null ? null : promotion.id(),
+                            approvedTotal);
+            print.setEnabled(true);
+            loadSeats();
+            if (JOptionPane.showConfirmDialog(
+                            this,
+                            "Đã lưu hóa đơn " + lastInvoice + ". Xuất PDF ngay?",
+                            "Thành công",
+                            JOptionPane.YES_NO_OPTION)
+                    == JOptionPane.YES_OPTION) HoaDonPDF.chonNoiLuu(this, lastInvoice);
+        } catch (Exception ex) {
+            error(ex);
+            loadSeats();
+        }
+    }
+
+    private static LuaChonBanVe choice(JComboBox<LuaChonBanVe> box) {
+        return (LuaChonBanVe) box.getSelectedItem();
+    }
+
+    private void error(Exception ex) {
+        JOptionPane.showMessageDialog(
+                this, ex.getMessage(), "Không thể xử lý", JOptionPane.ERROR_MESSAGE);
+    }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new BanVe_GUI("1").setVisible(true));
+        Main_GUI.main(args);
     }
 }

@@ -1,25 +1,27 @@
 package gui;
 
 import dao.PhimDAO;
+
 import entity.Phim;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+
+import service.Session;
+
 import java.awt.*;
 import java.util.List;
 
-public class QuanLyPhim_GUI extends JFrame {
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
+public class QuanLyPhim_GUI extends JPanel {
     private JTable table;
     private DefaultTableModel tableModel;
     private JTextField tfTimKiem;
     private PhimDAO phimDAO;
 
     public QuanLyPhim_GUI() {
+        Session.requireStaff();
+        setLayout(new BorderLayout(10, 10));
         phimDAO = new PhimDAO();
-        setTitle("Quản Lý Phim - Rạp Chiếu Phim");
-        setExtendedState(JFrame.MAXIMIZED_BOTH); // Mở rộng màn hình full
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setResizable(false);
 
         JPanel mainPanel = new JPanel(new BorderLayout());
 
@@ -79,24 +81,35 @@ public class QuanLyPhim_GUI extends JFrame {
         JTextField tfTenPhim = new JTextField();
         JTextField tfTheLoai = new JTextField();
         JTextField tfThoiLuong = new JTextField();
-        JComboBox<String> cbTrangThai = new JComboBox<>(new String[]{"Sắp Chiếu", "Đang Chiếu", "Ngừng Chiếu"});
+        JComboBox<String> cbTrangThai =
+                new JComboBox<>(new String[] {"Sắp Chiếu", "Đang Chiếu", "Ngừng Chiếu"});
 
+        PosterField poster = new PosterField("");
         Object[] message = {
             "Mã Phim:", tfMaPhim,
             "Tên Phim:", tfTenPhim,
             "Thể Loại:", tfTheLoai,
             "Thời Lượng (phút):", tfThoiLuong,
-            "Trạng Thái:", cbTrangThai
+            "Trạng Thái:", cbTrangThai,
+            "Đường dẫn poster (không bắt buộc):", poster
         };
 
         while (true) {
             String[] options = {"Lưu", "Clear"};
-            int option = JOptionPane.showOptionDialog(this, message, "Thêm Phim Mới",
-                    JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
-                    null, options, options[0]);
+            int option =
+                    JOptionPane.showOptionDialog(
+                            this,
+                            message,
+                            "Thêm Phim Mới",
+                            JOptionPane.DEFAULT_OPTION,
+                            JOptionPane.PLAIN_MESSAGE,
+                            null,
+                            options,
+                            options[0]);
 
             if (option == 1) { // Clear
                 tfMaPhim.setText("");
+                poster.clear();
                 tfTenPhim.setText("");
                 tfTheLoai.setText("");
                 tfThoiLuong.setText("");
@@ -114,24 +127,43 @@ public class QuanLyPhim_GUI extends JFrame {
                 String trangThai = (String) cbTrangThai.getSelectedItem();
 
                 // Kiểm tra rỗng
-                if (maPhim.isEmpty() || tenPhim.isEmpty() || theLoai.isEmpty() || thoiLuongStr.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                if (maPhim.isEmpty()
+                        || tenPhim.isEmpty()
+                        || theLoai.isEmpty()
+                        || thoiLuongStr.isEmpty()) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Vui lòng nhập đầy đủ thông tin.",
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
                     continue;
                 }
 
                 // Kiểm tra định dạng
-                if (!tenPhim.matches("^[\\p{L}0-9 ,\\.]+$")) {
-                    JOptionPane.showMessageDialog(this, "Tên phim chỉ được chứa chữ cái, số, dấu cách, dấu phẩy và dấu chấm.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                if (tenPhim.isBlank() || tenPhim.length() > 100) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Tên phim phải có từ 1 đến 100 ký tự.",
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
                     continue;
                 }
 
-                if (!theLoai.matches("^[\\p{L} ]+$")) {
-                    JOptionPane.showMessageDialog(this, "Thể loại chỉ được chứa chữ cái.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                if (theLoai.isBlank() || theLoai.length() > 50) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Thể loại phải có từ 1 đến 50 ký tự.",
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
                     continue;
                 }
 
                 if (!thoiLuongStr.matches("^\\d{2,3}$")) {
-                    JOptionPane.showMessageDialog(this, "Thời lượng phải là số nguyên có 2 hoặc 3 chữ số.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Thời lượng phải là số nguyên có 2 hoặc 3 chữ số.",
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
                     continue;
                 }
 
@@ -139,31 +171,48 @@ public class QuanLyPhim_GUI extends JFrame {
 
                 // Kiểm tra trùng mã phim
                 if (phimDAO.layPhimTheoMa(maPhim) != null) {
-                    JOptionPane.showMessageDialog(this, "Mã phim đã tồn tại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(
+                            this, "Mã phim đã tồn tại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     continue;
                 }
 
-                Phim phim = new Phim(maPhim, tenPhim, theLoai, thoiLuong, trangThai, "", "", "", "", null);
+                Phim phim =
+                        new Phim(
+                                maPhim, tenPhim, theLoai, thoiLuong, trangThai, "", "", "", "",
+                                null);
+                phim.setPosterPath(poster.saveImage());
                 boolean success = phimDAO.themPhim(phim);
                 if (success) {
-                    JOptionPane.showMessageDialog(this, "Thêm phim mới thành công.", "Thông Báo", JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Thêm phim mới thành công.",
+                            "Thông Báo",
+                            JOptionPane.INFORMATION_MESSAGE);
                     lamMoiDanhSach();
                     break;
                 } else {
-                    JOptionPane.showMessageDialog(this, "Lỗi khi thêm phim.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(
+                            this, "Lỗi khi thêm phim.", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
 
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(this, "Thời lượng phải là số nguyên.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Không lưu được phim: " + e.getMessage(),
+                        "Lỗi",
+                        JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-
     private void chinhSuaPhim() {
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn phim cần chỉnh sửa.", "Thông Báo", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Vui lòng chọn phim cần chỉnh sửa.",
+                    "Thông Báo",
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -171,17 +220,24 @@ public class QuanLyPhim_GUI extends JFrame {
         JTextField tfTenPhim = new JTextField(tableModel.getValueAt(selectedRow, 1).toString());
         JTextField tfTheLoai = new JTextField(tableModel.getValueAt(selectedRow, 2).toString());
         JTextField tfThoiLuong = new JTextField(tableModel.getValueAt(selectedRow, 3).toString());
-        JComboBox<String> cbTrangThai = new JComboBox<>(new String[]{"Sắp Chiếu", "Đang Chiếu", "Ngừng Chiếu"});
+        JComboBox<String> cbTrangThai =
+                new JComboBox<>(new String[] {"Sắp Chiếu", "Đang Chiếu", "Ngừng Chiếu"});
         cbTrangThai.setSelectedItem(tableModel.getValueAt(selectedRow, 4).toString());
 
+        Phim existing = phimDAO.layPhimTheoMa(maPhim);
+        if (existing == null) return;
+        PosterField poster = new PosterField(existing.getPosterPath());
         Object[] message = {
             "Tên Phim:", tfTenPhim,
             "Thể Loại:", tfTheLoai,
             "Thời Lượng:", tfThoiLuong,
-            "Trạng Thái:", cbTrangThai
+            "Trạng Thái:", cbTrangThai,
+            "Đường dẫn poster (không bắt buộc):", poster
         };
 
-        int option = JOptionPane.showConfirmDialog(this, message, "Chỉnh Sửa Phim", JOptionPane.OK_CANCEL_OPTION);
+        int option =
+                JOptionPane.showConfirmDialog(
+                        this, message, "Chỉnh Sửa Phim", JOptionPane.OK_CANCEL_OPTION);
         if (option == JOptionPane.CANCEL_OPTION || option == JOptionPane.CLOSED_OPTION) {
             return;
         }
@@ -191,20 +247,26 @@ public class QuanLyPhim_GUI extends JFrame {
         String thoiLuongStr = tfThoiLuong.getText().trim();
 
         // === RÀNG BUỘC ===
-        if (!tenPhim.matches("^[\\p{L}0-9 ,\\.]+$")) {
-            JOptionPane.showMessageDialog(this, "Tên phim chỉ được chứa chữ cái, số, dấu cách, dấu phẩy và dấu chấm.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        if (tenPhim.isBlank() || tenPhim.length() > 100) {
+            JOptionPane.showMessageDialog(
+                    this, "Tên phim phải có từ 1 đến 100 ký tự.", "Lỗi", JOptionPane.ERROR_MESSAGE);
             chinhSuaPhim();
             return;
         }
 
-        if (!theLoai.matches("^[\\p{L} ]+$")) {
-            JOptionPane.showMessageDialog(this, "Thể loại chỉ được chứa chữ cái và dấu cách.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        if (theLoai.isBlank() || theLoai.length() > 50) {
+            JOptionPane.showMessageDialog(
+                    this, "Thể loại phải có từ 1 đến 50 ký tự.", "Lỗi", JOptionPane.ERROR_MESSAGE);
             chinhSuaPhim();
             return;
         }
 
         if (!thoiLuongStr.matches("^\\d{2,3}$")) {
-            JOptionPane.showMessageDialog(this, "Thời lượng phải là số nguyên có 2 hoặc 3 chữ số.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Thời lượng phải là số nguyên có 2 hoặc 3 chữ số.",
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
             chinhSuaPhim();
             return;
         }
@@ -213,36 +275,61 @@ public class QuanLyPhim_GUI extends JFrame {
             int thoiLuong = Integer.parseInt(thoiLuongStr);
             String trangThai = (String) cbTrangThai.getSelectedItem();
 
-            Phim phim = new Phim(maPhim, tenPhim, theLoai, thoiLuong, trangThai, "", "", "", "", null);
+            Phim phim = existing;
+            phim.setTenPhim(tenPhim);
+            phim.setTheLoai(theLoai);
+            phim.setThoiLuong(thoiLuong);
+            phim.setTrangThai(trangThai);
+            phim.setPosterPath(poster.saveImage());
             boolean success = phimDAO.suaPhim(phim);
             if (success) {
-                JOptionPane.showMessageDialog(this, "Chỉnh sửa phim thành công.", "Thông Báo", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Chỉnh sửa phim thành công.",
+                        "Thông Báo",
+                        JOptionPane.INFORMATION_MESSAGE);
                 lamMoiDanhSach();
             } else {
-                JOptionPane.showMessageDialog(this, "Lỗi khi chỉnh sửa phim.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(
+                        this, "Lỗi khi chỉnh sửa phim.", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Thời lượng phải là số nguyên.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Không lưu được phim: " + e.getMessage(),
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
-
 
     private void xoaPhim() {
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn phim cần xóa.", "Thông Báo", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(
+                    this, "Vui lòng chọn phim cần xóa.", "Thông Báo", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         String maPhim = tableModel.getValueAt(selectedRow, 0).toString();
-        int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn muốn xóa phim này, hãy đảm bảo không còn suất chiếu nào cho phim này?", "Xóa Phim", JOptionPane.YES_NO_OPTION);
+        int confirm =
+                JOptionPane.showConfirmDialog(
+                        this,
+                        "Bạn có chắc chắn muốn xóa phim này, hãy đảm bảo không còn suất chiếu nào"
+                            + " cho phim này?",
+                        "Xóa Phim",
+                        JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             boolean success = phimDAO.xoaPhim(maPhim);
             if (success) {
-                JOptionPane.showMessageDialog(this, "Xóa phim thành công.", "Thông Báo", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(
+                        this, "Xóa phim thành công.", "Thông Báo", JOptionPane.INFORMATION_MESSAGE);
                 lamMoiDanhSach();
             } else {
-                JOptionPane.showMessageDialog(this, "Không tìm thấy mã phim để xóa.", "Thông Báo", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Không tìm thấy mã phim để xóa.",
+                        "Thông Báo",
+                        JOptionPane.WARNING_MESSAGE);
             }
         }
     }
@@ -251,26 +338,42 @@ public class QuanLyPhim_GUI extends JFrame {
         tableModel.setRowCount(0); // Xóa dữ liệu cũ
         List<Phim> danhSachPhim = phimDAO.layTatCaPhim();
         for (Phim phim : danhSachPhim) {
-            tableModel.addRow(new Object[]{phim.getMaPhim(), phim.getTenPhim(), phim.getTheLoai(), phim.getThoiLuong(), phim.getTrangThai()});
+            tableModel.addRow(
+                    new Object[] {
+                        phim.getMaPhim(),
+                        phim.getTenPhim(),
+                        phim.getTheLoai(),
+                        phim.getThoiLuong(),
+                        phim.getTrangThai()
+                    });
         }
     }
 
     private void timKiemPhim() {
         String keyword = tfTimKiem.getText().trim();
         if (keyword.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập từ khóa để tìm kiếm.", "Thông Báo", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Vui lòng nhập từ khóa để tìm kiếm.",
+                    "Thông Báo",
+                    JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         tableModel.setRowCount(0); // Xóa dữ liệu cũ
         List<Phim> danhSachPhim = phimDAO.timKiemPhim(keyword);
         for (Phim phim : danhSachPhim) {
-            tableModel.addRow(new Object[]{phim.getMaPhim(), phim.getTenPhim(), phim.getTheLoai(), phim.getThoiLuong(), phim.getTrangThai()});
+            tableModel.addRow(
+                    new Object[] {
+                        phim.getMaPhim(),
+                        phim.getTenPhim(),
+                        phim.getTheLoai(),
+                        phim.getThoiLuong(),
+                        phim.getTrangThai()
+                    });
         }
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new QuanLyPhim_GUI().setVisible(true);
-        });
+        DangNhap_GUI.main(args);
     }
 }

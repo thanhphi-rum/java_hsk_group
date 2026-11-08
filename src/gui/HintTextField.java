@@ -1,7 +1,8 @@
 package gui;
 
-import javax.swing.*;
 import java.awt.*;
+
+import javax.swing.*;
 
 public class HintTextField extends JTextField {
     private final String hint;

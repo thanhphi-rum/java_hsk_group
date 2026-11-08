@@ -1,6 +1,7 @@
 package dao;
 
 import connect.ConnectDB;
+
 import entity.Ghe;
 import entity.GheSuatChieu;
 import entity.PhongChieu;
@@ -17,8 +18,8 @@ public class GheDAO {
         List<Ghe> danhSachGhe = new ArrayList<>();
         String sql = "SELECT * FROM Ghe";
         try (Connection conn = ConnectDB.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 String maGhe = rs.getString("MaGhe");
                 String maPhongChieu = rs.getString("MaPhongChieu");
@@ -38,7 +39,7 @@ public class GheDAO {
         List<Ghe> danhSachGhe = new ArrayList<>();
         String sql = "SELECT * FROM Ghe WHERE MaPhongChieu = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, phongChieu.getMaPhongChieu());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -57,14 +58,15 @@ public class GheDAO {
     // Lấy Ghế theo Mã Suất Chiếu
     public List<GheSuatChieu> layGheTheoMaSuatChieu(String maSuatChieu) {
         List<GheSuatChieu> danhSach = new ArrayList<>();
-        String sql = """
-            SELECT g.MaGhe, g.MaPhongChieu, g.ViTri, g.LoaiGhe, gs.TrangThai
-            FROM Ghe_SuatChieu gs
-            JOIN Ghe g ON gs.MaGhe = g.MaGhe
-            WHERE gs.MaSuatChieu = ?
-        """;
+        String sql =
+                """
+                    SELECT g.MaGhe, g.MaPhongChieu, g.ViTri, g.LoaiGhe, gs.TrangThai
+                    FROM Ghe_SuatChieu gs
+                    JOIN Ghe g ON gs.MaGhe = g.MaGhe
+                    WHERE gs.MaSuatChieu = ?
+                """;
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maSuatChieu);
             try (ResultSet rs = ps.executeQuery()) {
                 SuatChieu suatChieu = new SuatChieu(maSuatChieu);
@@ -87,7 +89,7 @@ public class GheDAO {
     public void capNhatTrangThaiGhe(String maSuatChieu, String maGhe, String trangThai) {
         String sql = "UPDATE Ghe_SuatChieu SET TrangThai = ? WHERE MaSuatChieu = ? AND MaGhe = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, trangThai);
             ps.setString(2, maSuatChieu);
             ps.setString(3, maGhe);
@@ -99,16 +101,17 @@ public class GheDAO {
 
     // HoaDon không còn MaSuatChieu/MaGhe nên lấy ghế qua bảng Ve
     public boolean capNhatTrangThaiGheSauKhiXoaHoaDon(Connection conn, String maHoaDon) {
-        String sql = """
-            UPDATE Ghe_SuatChieu
-            SET TrangThai = 'Trống'
-            WHERE EXISTS (
-                SELECT 1 FROM Ve v
-                WHERE v.MaHoaDon = ?
-                  AND v.MaSuatChieu = Ghe_SuatChieu.MaSuatChieu
-                  AND v.MaGhe = Ghe_SuatChieu.MaGhe
-            )
-        """;
+        String sql =
+                """
+                    UPDATE Ghe_SuatChieu
+                    SET TrangThai = N'Trống'
+                    WHERE EXISTS (
+                        SELECT 1 FROM Ve v
+                        WHERE v.MaHoaDon = ?
+                          AND v.MaSuatChieu = Ghe_SuatChieu.MaSuatChieu
+                          AND v.MaGhe = Ghe_SuatChieu.MaGhe
+                    )
+                """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maHoaDon);
             int rowsAffected = ps.executeUpdate();
@@ -122,9 +125,11 @@ public class GheDAO {
     public void khoiTaoTrangThaiGheChoSuatChieu(String maSuatChieu, String maPhongChieu) {
         List<Ghe> gheList = layGheTheoMaPhongChieu(new PhongChieu(maPhongChieu));
         for (Ghe ghe : gheList) {
-            String sql = "INSERT INTO Ghe_SuatChieu (MaSuatChieu, MaGhe, TrangThai) VALUES (?, ?, 'Trống')";
+            String sql =
+                    "INSERT INTO Ghe_SuatChieu (MaSuatChieu, MaGhe, TrangThai) VALUES (?, ?,"
+                        + " N'Trống')";
             try (Connection conn = ConnectDB.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                    PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, maSuatChieu);
                 ps.setString(2, ghe.getMaGhe());
                 ps.executeUpdate();

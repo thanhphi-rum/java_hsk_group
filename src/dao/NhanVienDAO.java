@@ -1,6 +1,7 @@
 package dao;
 
 import connect.ConnectDB;
+
 import entity.NhanVien;
 
 import java.sql.*;
@@ -12,9 +13,11 @@ public class NhanVienDAO {
 
     // Thêm Nhân Viên
     public boolean themNhanVien(NhanVien nhanVien) {
-        String sql = "INSERT INTO NhanVien (MaNhanVien, TenNhanVien, NgaySinh, GioiTinh, SoDienThoai, Email, DiaChi, ChucVu) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql =
+                "INSERT INTO NhanVien (MaNhanVien, TenNhanVien, NgaySinh, GioiTinh, SoDienThoai,"
+                    + " Email, DiaChi, ChucVu) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nhanVien.getMaNhanVien());
             ps.setString(2, nhanVien.getTenNhanVien());
             ps.setDate(3, java.sql.Date.valueOf(nhanVien.getNgaySinh()));
@@ -32,9 +35,11 @@ public class NhanVienDAO {
 
     // Sửa Nhân Viên
     public boolean suaNhanVien(NhanVien nhanVien) {
-        String sql = "UPDATE NhanVien SET TenNhanVien = ?, NgaySinh = ?, GioiTinh = ?, SoDienThoai = ?, Email = ?, DiaChi = ?, ChucVu = ? WHERE MaNhanVien = ?";
+        String sql =
+                "UPDATE NhanVien SET TenNhanVien = ?, NgaySinh = ?, GioiTinh = ?, SoDienThoai = ?,"
+                    + " Email = ?, DiaChi = ?, ChucVu = ? WHERE MaNhanVien = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nhanVien.getTenNhanVien());
             ps.setDate(2, java.sql.Date.valueOf(nhanVien.getNgaySinh()));
             ps.setString(3, nhanVien.getGioiTinh());
@@ -54,7 +59,7 @@ public class NhanVienDAO {
     public boolean xoaNhanVien(String maNhanVien) {
         String sql = "DELETE FROM NhanVien WHERE MaNhanVien = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maNhanVien);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -68,8 +73,8 @@ public class NhanVienDAO {
         List<NhanVien> danhSachNhanVien = new ArrayList<>();
         String sql = "SELECT * FROM NhanVien";
         try (Connection conn = ConnectDB.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 String maNhanVien = rs.getString("MaNhanVien");
                 String tenNhanVien = rs.getString("TenNhanVien");
@@ -80,7 +85,16 @@ public class NhanVienDAO {
                 String email = rs.getString("Email");
                 String diaChi = rs.getString("DiaChi");
                 String chucVu = rs.getString("ChucVu");
-                danhSachNhanVien.add(new NhanVien(maNhanVien, tenNhanVien, ngaySinh, gioiTinh, soDienThoai, email, diaChi, chucVu));
+                danhSachNhanVien.add(
+                        new NhanVien(
+                                maNhanVien,
+                                tenNhanVien,
+                                ngaySinh,
+                                gioiTinh,
+                                soDienThoai,
+                                email,
+                                diaChi,
+                                chucVu));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -92,7 +106,7 @@ public class NhanVienDAO {
     public NhanVien layNhanVienTheoMa(String maNhanVien) {
         String sql = "SELECT * FROM NhanVien WHERE MaNhanVien = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maNhanVien);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -104,7 +118,15 @@ public class NhanVienDAO {
                     String email = rs.getString("Email");
                     String diaChi = rs.getString("DiaChi");
                     String chucVu = rs.getString("ChucVu");
-                    return new NhanVien(maNhanVien, tenNhanVien, ngaySinh, gioiTinh, soDienThoai, email, diaChi, chucVu);
+                    return new NhanVien(
+                            maNhanVien,
+                            tenNhanVien,
+                            ngaySinh,
+                            gioiTinh,
+                            soDienThoai,
+                            email,
+                            diaChi,
+                            chucVu);
                 }
             }
         } catch (SQLException e) {

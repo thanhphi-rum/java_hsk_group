@@ -1,6 +1,7 @@
 package dao;
 
 import connect.ConnectDB;
+
 import entity.HoaDon;
 import entity.KhachHang;
 import entity.KhuyenMai;
@@ -24,32 +25,38 @@ public class HoaDonDAO {
         LocalDateTime ngayLap = (ts == null) ? null : ts.toLocalDateTime();
         double tongTien = rs.getDouble("TongTien");
         String phuongThucThanhToan = rs.getString("PhuongThucThanhToan");
-        return new HoaDon(maHoaDon, nhanVien, khachHang, khuyenMai, ngayLap, tongTien, phuongThucThanhToan);
+        return new HoaDon(
+                maHoaDon, nhanVien, khachHang, khuyenMai, ngayLap, tongTien, phuongThucThanhToan);
     }
 
-    // Thêm Hóa Đơn và trả về kết quả thành công hay không (Sử dụng Connection từ BanVe_GUI để quản lý Transaction)
+    // Thêm Hóa Đơn và trả về kết quả thành công hay không (Sử dụng Connection từ BanVe_GUI để quản
+    // lý Transaction)
     public boolean themHoaDon(Connection conn, HoaDon hoaDon) {
-        String sql = "INSERT INTO HoaDon (MaHoaDon, MaNhanVien, MaKhachHang, MaKhuyenMai, NgayLap, TongTien, PhuongThucThanhToan) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql =
+                "INSERT INTO HoaDon (MaHoaDon, MaNhanVien, MaKhachHang, MaKhuyenMai, NgayLap,"
+                    + " TongTien, PhuongThucThanhToan) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, hoaDon.getMaHoaDon());
             ps.setString(2, hoaDon.getNhanVien().getMaNhanVien());
-            
-            if (hoaDon.getKhachHang() != null && !hoaDon.getKhachHang().getMaKhachHang().isEmpty()) {
+
+            if (hoaDon.getKhachHang() != null
+                    && !hoaDon.getKhachHang().getMaKhachHang().isEmpty()) {
                 ps.setString(3, hoaDon.getKhachHang().getMaKhachHang());
             } else {
                 ps.setNull(3, java.sql.Types.VARCHAR);
             }
-            
-            if (hoaDon.getKhuyenMai() != null && !hoaDon.getKhuyenMai().getMaKhuyenMai().isEmpty()) {
+
+            if (hoaDon.getKhuyenMai() != null
+                    && !hoaDon.getKhuyenMai().getMaKhuyenMai().isEmpty()) {
                 ps.setString(4, hoaDon.getKhuyenMai().getMaKhuyenMai());
             } else {
                 ps.setNull(4, java.sql.Types.VARCHAR);
             }
-            
+
             ps.setTimestamp(5, Timestamp.valueOf(hoaDon.getNgayLap()));
             ps.setDouble(6, hoaDon.getTongTien());
             ps.setString(7, hoaDon.getPhongThucThanhToan());
-            
+
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -72,8 +79,8 @@ public class HoaDonDAO {
         List<HoaDon> danhSachHoaDon = new ArrayList<>();
         String sql = "SELECT * FROM HoaDon";
         try (Connection conn = ConnectDB.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 danhSachHoaDon.add(taoHoaDon(rs));
             }
@@ -87,7 +94,7 @@ public class HoaDonDAO {
         List<HoaDon> danhSachHoaDon = new ArrayList<>();
         String sql = "SELECT * FROM HoaDon WHERE MaKhachHang = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maKhachHang);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -104,7 +111,7 @@ public class HoaDonDAO {
         List<HoaDon> danhSachHoaDon = new ArrayList<>();
         String sql = "SELECT * FROM HoaDon WHERE MaHoaDon LIKE ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, "%" + keyword + "%");
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -115,5 +122,42 @@ public class HoaDonDAO {
             e.printStackTrace();
         }
         return danhSachHoaDon;
+    }
+
+    /**
+     * Xóa giao dịch bán trực tiếp trong một transaction; đơn đặt chỗ đã trả tiền được giữ lịch sử.
+     */
+    public void xoaHoaDonVaVe(String id) throws SQLException {
+        service.Session.requireStaff();
+        try (Connection conn = ConnectDB.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement check =
+                        conn.prepareStatement("SELECT MaDatVe FROM DatVe WHERE MaHoaDon=?")) {
+                    check.setString(1, id);
+                    try (ResultSet row = check.executeQuery()) {
+                        if (row.next())
+                            throw new SQLException(
+                                    "Hóa đơn gắn với đơn đặt vé đã thanh toán; không được xóa lịch"
+                                        + " sử giao dịch này.");
+                    }
+                }
+                try (PreparedStatement detail = conn.prepareStatement("DELETE FROM ChiTietHoaDon WHERE MaHoaDon=?")) {
+                    detail.setString(1, id); detail.executeUpdate();
+                }
+                if (!new GheDAO().capNhatTrangThaiGheSauKhiXoaHoaDon(conn, id))
+                    throw new SQLException("Không trả lại được ghế.");
+                try (PreparedStatement statement =
+                        conn.prepareStatement("DELETE FROM Ve WHERE MaHoaDon=?")) {
+                    statement.setString(1, id);
+                    statement.executeUpdate();
+                }
+                if (!xoaHoaDon(conn, id)) throw new SQLException("Không xóa được hóa đơn.");
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            }
+        }
     }
 }

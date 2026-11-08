@@ -12,88 +12,95 @@ public class SuatChieu {
     private LocalDateTime gioKetThuc;
     private double giaVe;
     private String trangThai;
-    
-	public SuatChieu(String maSuatChieu, Phim phim, PhongChieu phongChieu, LocalDate ngayChieu, LocalDateTime gioBatDau,
-			LocalDateTime gioKetThuc, double giaVe, String trangThai) {
-		this.maSuatChieu = maSuatChieu;
-		this.phim = phim;
-		this.phongChieu = phongChieu;
-		this.ngayChieu = ngayChieu;
-		this.gioBatDau = gioBatDau;
-		this.gioKetThuc = gioKetThuc;
-		this.giaVe = giaVe;
-		this.trangThai = trangThai;
-	}
 
-	public SuatChieu(String maSuatChieu) {
-		this.maSuatChieu = maSuatChieu;
-	}
+    public SuatChieu(
+            String maSuatChieu,
+            Phim phim,
+            PhongChieu phongChieu,
+            LocalDate ngayChieu,
+            LocalDateTime gioBatDau,
+            LocalDateTime gioKetThuc,
+            double giaVe,
+            String trangThai) {
+        this.maSuatChieu = maSuatChieu;
+        this.phim = phim;
+        this.phongChieu = phongChieu;
+        this.ngayChieu = ngayChieu;
+        this.gioBatDau = gioBatDau;
+        this.gioKetThuc = gioKetThuc;
+        this.giaVe = giaVe;
+        this.trangThai = trangThai;
+    }
 
-	public SuatChieu() {
-		super();
-	}
+    public SuatChieu(String maSuatChieu) {
+        this.maSuatChieu = maSuatChieu;
+    }
 
-	public String getMaSuatChieu() {
-		return maSuatChieu;
-	}
+    public SuatChieu() {
+        super();
+    }
 
-	public void setMaSuatChieu(String maSuatChieu) {
-		this.maSuatChieu = maSuatChieu;
-	}
+    public String getMaSuatChieu() {
+        return maSuatChieu;
+    }
 
-	public Phim getPhim() {
-		return phim;
-	}
+    public void setMaSuatChieu(String maSuatChieu) {
+        this.maSuatChieu = maSuatChieu;
+    }
 
-	public void setPhim(Phim phim) {
-		this.phim = phim;
-	}
+    public Phim getPhim() {
+        return phim;
+    }
 
-	public PhongChieu getPhongChieu() {
-		return phongChieu;
-	}
+    public void setPhim(Phim phim) {
+        this.phim = phim;
+    }
 
-	public void setPhongChieu(PhongChieu phongChieu) {
-		this.phongChieu = phongChieu;
-	}
+    public PhongChieu getPhongChieu() {
+        return phongChieu;
+    }
 
-	public LocalDate getNgayChieu() {
-		return ngayChieu;
-	}
+    public void setPhongChieu(PhongChieu phongChieu) {
+        this.phongChieu = phongChieu;
+    }
 
-	public void setNgayChieu(LocalDate ngayChieu) {
-		this.ngayChieu = ngayChieu;
-	}
+    public LocalDate getNgayChieu() {
+        return ngayChieu;
+    }
 
-	public LocalDateTime getGioBatDau() {
-		return gioBatDau;
-	}
+    public void setNgayChieu(LocalDate ngayChieu) {
+        this.ngayChieu = ngayChieu;
+    }
 
-	public void setGioBatDau(LocalDateTime gioBatDau) {
-		this.gioBatDau = gioBatDau;
-	}
+    public LocalDateTime getGioBatDau() {
+        return gioBatDau;
+    }
 
-	public LocalDateTime getGioKetThuc() {
-		return gioKetThuc;
-	}
+    public void setGioBatDau(LocalDateTime gioBatDau) {
+        this.gioBatDau = gioBatDau;
+    }
 
-	public void setGioKetThuc(LocalDateTime gioKetThuc) {
-		this.gioKetThuc = gioKetThuc;
-	}
+    public LocalDateTime getGioKetThuc() {
+        return gioKetThuc;
+    }
 
-	public double getGiaVe() {
-		return giaVe;
-	}
+    public void setGioKetThuc(LocalDateTime gioKetThuc) {
+        this.gioKetThuc = gioKetThuc;
+    }
 
-	public void setGiaVe(double giaVe) {
-		this.giaVe = giaVe;
-	}
+    public double getGiaVe() {
+        return giaVe;
+    }
 
-	public String getTrangThai() {
-		return trangThai;
-	}
+    public void setGiaVe(double giaVe) {
+        this.giaVe = giaVe;
+    }
 
-	public void setTrangThai(String trangThai) {
-		this.trangThai = trangThai;
-	}
+    public String getTrangThai() {
+        return trangThai;
+    }
+
+    public void setTrangThai(String trangThai) {
+        this.trangThai = trangThai;
+    }
 }

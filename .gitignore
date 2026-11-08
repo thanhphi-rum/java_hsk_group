@@ -1,0 +1,7 @@
+bin/
+db.properties
+HoaDon/*.pdf
+build-sources.txt
+sql-network-backup.*
+sql-setup-result.txt
+.metadata/

@@ -1,6 +1,7 @@
 package dao;
 
 import connect.ConnectDB;
+
 import entity.Phim;
 import entity.PhongChieu;
 import entity.SuatChieu;
@@ -18,19 +19,22 @@ public class SuatChieuDAO {
         String maSuatChieu = rs.getString("MaSuatChieu");
         Phim phim = new Phim(rs.getString("MaPhim"));
         PhongChieu phongChieu = new PhongChieu(rs.getString("MaPhongChieu"));
-        LocalDate ngayChieu = rs.getDate("ngayChieu").toLocalDate();
+        LocalDate ngayChieu = rs.getTimestamp("GioBatDau").toLocalDateTime().toLocalDate();
         LocalDateTime gioBatDau = rs.getTimestamp("GioBatDau").toLocalDateTime();
         LocalDateTime gioKetThuc = rs.getTimestamp("GioKetThuc").toLocalDateTime();
         double giaVe = rs.getDouble("GiaVe");
         String trangThai = rs.getString("TrangThai");
-        return new SuatChieu(maSuatChieu, phim, phongChieu, ngayChieu, gioBatDau, gioKetThuc, giaVe, trangThai);
+        return new SuatChieu(
+                maSuatChieu, phim, phongChieu, ngayChieu, gioBatDau, gioKetThuc, giaVe, trangThai);
     }
 
     // Thêm Suất Chiếu
     public boolean themSuatChieu(SuatChieu suatChieu) {
-        String sql = "INSERT INTO SuatChieu (MaSuatChieu, MaPhim, MaPhongChieu, GioBatDau, GioKetThuc, GiaVe, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql =
+                "INSERT INTO SuatChieu (MaSuatChieu, MaPhim, MaPhongChieu, GioBatDau, GioKetThuc,"
+                    + " GiaVe, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, suatChieu.getMaSuatChieu());
             ps.setString(2, suatChieu.getPhim().getMaPhim());
             ps.setString(3, suatChieu.getPhongChieu().getMaPhongChieu());
@@ -47,9 +51,11 @@ public class SuatChieuDAO {
 
     // Sửa Suất Chiếu
     public boolean suaSuatChieu(SuatChieu suatChieu) {
-        String sql = "UPDATE SuatChieu SET MaPhim = ?, MaPhongChieu = ?, GioBatDau = ?, GioKetThuc = ?, GiaVe = ?, TrangThai = ? WHERE MaSuatChieu = ?";
+        String sql =
+                "UPDATE SuatChieu SET MaPhim = ?, MaPhongChieu = ?, GioBatDau = ?, GioKetThuc = ?,"
+                    + " GiaVe = ?, TrangThai = ? WHERE MaSuatChieu = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, suatChieu.getPhim().getMaPhim());
             ps.setString(2, suatChieu.getPhongChieu().getMaPhongChieu());
             ps.setTimestamp(3, Timestamp.valueOf(suatChieu.getGioBatDau()));
@@ -69,8 +75,8 @@ public class SuatChieuDAO {
         List<SuatChieu> danhSachSuatChieu = new ArrayList<>();
         String sql = "SELECT * FROM SuatChieu";
         try (Connection conn = ConnectDB.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 danhSachSuatChieu.add(taoSuatChieu(rs));
             }
@@ -84,7 +90,7 @@ public class SuatChieuDAO {
     public SuatChieu laySuatChieuTheoMa(String maSuatChieu) {
         String sql = "SELECT * FROM SuatChieu WHERE MaSuatChieu = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maSuatChieu);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -130,7 +136,7 @@ public class SuatChieuDAO {
         List<SuatChieu> danhSach = new ArrayList<>();
         String sql = "SELECT * FROM SuatChieu WHERE MaPhim = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maPhim);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {

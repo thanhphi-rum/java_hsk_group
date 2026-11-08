@@ -10,80 +10,85 @@ public class HoaDon {
     private LocalDateTime ngayLap;
     private double tongTien;
     private String phuongThucThanhToan;
-    
-	public HoaDon(String maHoaDon, NhanVien nhanVien, KhachHang khachHang, KhuyenMai khuyenMai, LocalDateTime ngayLap,
-			double tongTien, String phongThucThanhToan) {
-		this.maHoaDon = maHoaDon;
-		this.nhanVien = nhanVien;
-		this.khachHang = khachHang;
-		this.khuyenMai = khuyenMai;
-		this.ngayLap = ngayLap;
-		this.tongTien = tongTien;
-		this.phuongThucThanhToan = phongThucThanhToan;
-	}
 
-	public HoaDon(String maHoaDon) {
-		this.maHoaDon = maHoaDon;
-	}
+    public HoaDon(
+            String maHoaDon,
+            NhanVien nhanVien,
+            KhachHang khachHang,
+            KhuyenMai khuyenMai,
+            LocalDateTime ngayLap,
+            double tongTien,
+            String phongThucThanhToan) {
+        this.maHoaDon = maHoaDon;
+        this.nhanVien = nhanVien;
+        this.khachHang = khachHang;
+        this.khuyenMai = khuyenMai;
+        this.ngayLap = ngayLap;
+        this.tongTien = tongTien;
+        this.phuongThucThanhToan = phongThucThanhToan;
+    }
 
-	public HoaDon() {
-		super();
-	}
+    public HoaDon(String maHoaDon) {
+        this.maHoaDon = maHoaDon;
+    }
 
-	public String getMaHoaDon() {
-		return maHoaDon;
-	}
+    public HoaDon() {
+        super();
+    }
 
-	public void setMaHoaDon(String maHoaDon) {
-		this.maHoaDon = maHoaDon;
-	}
+    public String getMaHoaDon() {
+        return maHoaDon;
+    }
 
-	public NhanVien getNhanVien() {
-		return nhanVien;
-	}
+    public void setMaHoaDon(String maHoaDon) {
+        this.maHoaDon = maHoaDon;
+    }
 
-	public void setNhanVien(NhanVien nhanVien) {
-		this.nhanVien = nhanVien;
-	}
+    public NhanVien getNhanVien() {
+        return nhanVien;
+    }
 
-	public KhachHang getKhachHang() {
-		return khachHang;
-	}
+    public void setNhanVien(NhanVien nhanVien) {
+        this.nhanVien = nhanVien;
+    }
 
-	public void setKhachHang(KhachHang khachHang) {
-		this.khachHang = khachHang;
-	}
+    public KhachHang getKhachHang() {
+        return khachHang;
+    }
 
-	public KhuyenMai getKhuyenMai() {
-		return khuyenMai;
-	}
+    public void setKhachHang(KhachHang khachHang) {
+        this.khachHang = khachHang;
+    }
 
-	public void setKhuyenMai(KhuyenMai khuyenMai) {
-		this.khuyenMai = khuyenMai;
-	}
+    public KhuyenMai getKhuyenMai() {
+        return khuyenMai;
+    }
 
-	public LocalDateTime getNgayLap() {
-		return ngayLap;
-	}
+    public void setKhuyenMai(KhuyenMai khuyenMai) {
+        this.khuyenMai = khuyenMai;
+    }
 
-	public void setNgayLap(LocalDateTime ngayLap) {
-		this.ngayLap = ngayLap;
-	}
+    public LocalDateTime getNgayLap() {
+        return ngayLap;
+    }
 
-	public double getTongTien() {
-		return tongTien;
-	}
+    public void setNgayLap(LocalDateTime ngayLap) {
+        this.ngayLap = ngayLap;
+    }
 
-	public void setTongTien(double tongTien) {
-		this.tongTien = tongTien;
-	}
+    public double getTongTien() {
+        return tongTien;
+    }
 
-	public String getPhongThucThanhToan() {
-		return phuongThucThanhToan;
-	}
+    public void setTongTien(double tongTien) {
+        this.tongTien = tongTien;
+    }
 
-	public void setPhongThucThanhToan(String phongThucThanhToan) {
-		this.phuongThucThanhToan = phongThucThanhToan;
-	}
-    
+    public String getPhongThucThanhToan() {
+        return phuongThucThanhToan;
+    }
+
+    public void setPhongThucThanhToan(String phongThucThanhToan) {
+        this.phuongThucThanhToan = phongThucThanhToan;
+    }
 }

@@ -1,51 +1,51 @@
-	package entity;
+package entity;
 
 public class TaiKhoan {
-	private String tenDangNhap;
-	private String matKhau;
-	private String trangThai;
-	private NhanVien nhanVien;
-	
-	public TaiKhoan(String tenDangNhap, String matKhau, String trangThai, NhanVien nhanVien) {
-		this.tenDangNhap = tenDangNhap;
-		this.matKhau = matKhau;
-		this.trangThai = trangThai;
-		this.nhanVien = nhanVien;
-	}
+    private String tenDangNhap;
+    private String matKhau;
+    private String trangThai;
+    private NhanVien nhanVien;
 
-	public TaiKhoan() {
-		super();
-	}
+    public TaiKhoan(String tenDangNhap, String matKhau, String trangThai, NhanVien nhanVien) {
+        this.tenDangNhap = tenDangNhap;
+        this.matKhau = matKhau;
+        this.trangThai = trangThai;
+        this.nhanVien = nhanVien;
+    }
 
-	public String getTenDangNhap() {
-		return tenDangNhap;
-	}
+    public TaiKhoan() {
+        super();
+    }
 
-	public void setTenDangNhap(String tenDangNhap) {
-		this.tenDangNhap = tenDangNhap;
-	}
+    public String getTenDangNhap() {
+        return tenDangNhap;
+    }
 
-	public String getMatKhau() {
-		return matKhau;
-	}
+    public void setTenDangNhap(String tenDangNhap) {
+        this.tenDangNhap = tenDangNhap;
+    }
 
-	public void setMatKhau(String matKhau) {
-		this.matKhau = matKhau;
-	}
+    public String getMatKhau() {
+        return matKhau;
+    }
 
-	public String getTrangThai() {
-		return trangThai;
-	}
+    public void setMatKhau(String matKhau) {
+        this.matKhau = matKhau;
+    }
 
-	public void setTrangThai(String trangThai) {
-		this.trangThai = trangThai;
-	}
+    public String getTrangThai() {
+        return trangThai;
+    }
 
-	public NhanVien getNhanVien() {
-		return nhanVien;
-	}
+    public void setTrangThai(String trangThai) {
+        this.trangThai = trangThai;
+    }
 
-	public void setNhanVien(NhanVien nhanVien) {
-		this.nhanVien = nhanVien;
-	}	
+    public NhanVien getNhanVien() {
+        return nhanVien;
+    }
+
+    public void setNhanVien(NhanVien nhanVien) {
+        this.nhanVien = nhanVien;
+    }
 }

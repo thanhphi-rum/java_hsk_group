@@ -9,73 +9,75 @@ public class KhuyenMai {
     private double phanTramGiam;
     private LocalDate ngayBatDau;
     private LocalDate ngayKetThuc;
-    
-	public KhuyenMai(String maKhuyenMai, String tenKhuyenMai, String moTa, double phanTramGiam, LocalDate ngayBatDau,
-			LocalDate ngayKetThuc) {
-		this.maKhuyenMai = maKhuyenMai;
-		this.tenKhuyenMai = tenKhuyenMai;
-		this.moTa = moTa;
-		this.phanTramGiam = phanTramGiam;
-		this.ngayBatDau = ngayBatDau;
-		this.ngayKetThuc = ngayKetThuc;
-	}
 
-	public KhuyenMai(String maKhuyenMai) {
-		this.maKhuyenMai = maKhuyenMai;
-	}
+    public KhuyenMai(
+            String maKhuyenMai,
+            String tenKhuyenMai,
+            String moTa,
+            double phanTramGiam,
+            LocalDate ngayBatDau,
+            LocalDate ngayKetThuc) {
+        this.maKhuyenMai = maKhuyenMai;
+        this.tenKhuyenMai = tenKhuyenMai;
+        this.moTa = moTa;
+        this.phanTramGiam = phanTramGiam;
+        this.ngayBatDau = ngayBatDau;
+        this.ngayKetThuc = ngayKetThuc;
+    }
 
-	public KhuyenMai() {
-		super();
-	}
+    public KhuyenMai(String maKhuyenMai) {
+        this.maKhuyenMai = maKhuyenMai;
+    }
 
-	public String getMaKhuyenMai() {
-		return maKhuyenMai;
-	}
+    public KhuyenMai() {
+        super();
+    }
 
-	public void setMaKhuyenMai(String maKhuyenMai) {
-		this.maKhuyenMai = maKhuyenMai;
-	}
+    public String getMaKhuyenMai() {
+        return maKhuyenMai;
+    }
 
-	public String getTenKhuyenMai() {
-		return tenKhuyenMai;
-	}
+    public void setMaKhuyenMai(String maKhuyenMai) {
+        this.maKhuyenMai = maKhuyenMai;
+    }
 
-	public void setTenKhuyenMai(String tenKhuyenMai) {
-		this.tenKhuyenMai = tenKhuyenMai;
-	}
+    public String getTenKhuyenMai() {
+        return tenKhuyenMai;
+    }
 
-	public String getMoTa() {
-		return moTa;
-	}
+    public void setTenKhuyenMai(String tenKhuyenMai) {
+        this.tenKhuyenMai = tenKhuyenMai;
+    }
 
-	public void setMoTa(String moTa) {
-		this.moTa = moTa;
-	}
+    public String getMoTa() {
+        return moTa;
+    }
 
-	public double getPhanTramGiam() {
-		return phanTramGiam;
-	}
+    public void setMoTa(String moTa) {
+        this.moTa = moTa;
+    }
 
-	public void setPhanTramGiam(double phanTramGiam) {
-		this.phanTramGiam = phanTramGiam;
-	}
+    public double getPhanTramGiam() {
+        return phanTramGiam;
+    }
 
-	public LocalDate getNgayBatDau() {
-		return ngayBatDau;
-	}
+    public void setPhanTramGiam(double phanTramGiam) {
+        this.phanTramGiam = phanTramGiam;
+    }
 
-	public void setNgayBatDau(LocalDate ngayBatDau) {
-		this.ngayBatDau = ngayBatDau;
-	}
+    public LocalDate getNgayBatDau() {
+        return ngayBatDau;
+    }
 
-	public LocalDate getNgayKetThuc() {
-		return ngayKetThuc;
-	}
+    public void setNgayBatDau(LocalDate ngayBatDau) {
+        this.ngayBatDau = ngayBatDau;
+    }
 
-	public void setNgayKetThuc(LocalDate ngayKetThuc) {
-		this.ngayKetThuc = ngayKetThuc;
-	}
+    public LocalDate getNgayKetThuc() {
+        return ngayKetThuc;
+    }
 
-    
-
+    public void setNgayKetThuc(LocalDate ngayKetThuc) {
+        this.ngayKetThuc = ngayKetThuc;
+    }
 }

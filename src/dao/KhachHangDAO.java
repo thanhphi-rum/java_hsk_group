@@ -1,6 +1,7 @@
 package dao;
 
 import connect.ConnectDB;
+
 import entity.KhachHang;
 
 import java.sql.*;
@@ -11,9 +12,11 @@ public class KhachHangDAO {
 
     // Thêm khách hàng mới
     public boolean themKhachHang(KhachHang khachHang) {
-        String sql = "INSERT INTO KhachHang (MaKhachHang, TenKhachHang, SoDienThoai, Email, DiemTichLuy) VALUES (?, ?, ?, ?, ?)";
+        String sql =
+                "INSERT INTO KhachHang (MaKhachHang, TenKhachHang, SoDienThoai, Email, DiemTichLuy)"
+                    + " VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, khachHang.getMaKhachHang());
             ps.setString(2, khachHang.getTenKhachHang());
             ps.setString(3, khachHang.getSoDienThoai());
@@ -28,9 +31,11 @@ public class KhachHangDAO {
 
     // Sửa thông tin khách hàng
     public boolean suaKhachHang(KhachHang khachHang) {
-        String sql = "UPDATE KhachHang SET TenKhachHang = ?, SoDienThoai = ?, Email = ?, DiemTichLuy = ? WHERE MaKhachHang = ?";
+        String sql =
+                "UPDATE KhachHang SET TenKhachHang = ?, SoDienThoai = ?, Email = ?, DiemTichLuy = ?"
+                    + " WHERE MaKhachHang = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, khachHang.getTenKhachHang());
             ps.setString(2, khachHang.getSoDienThoai());
             ps.setString(3, khachHang.getEmail());
@@ -47,7 +52,7 @@ public class KhachHangDAO {
     public boolean xoaKhachHang(String maKhachHang) {
         String sql = "DELETE FROM KhachHang WHERE MaKhachHang = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maKhachHang);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -61,15 +66,16 @@ public class KhachHangDAO {
         List<KhachHang> danhSachKhachHang = new ArrayList<>();
         String sql = "SELECT * FROM KhachHang";
         try (Connection conn = ConnectDB.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 String maKhachHang = rs.getString("MaKhachHang");
                 String tenKhachHang = rs.getString("TenKhachHang");
                 String soDienThoai = rs.getString("SoDienThoai");
                 String email = rs.getString("Email");
                 int diemTichLuy = rs.getInt("DiemTichLuy");
-                danhSachKhachHang.add(new KhachHang(maKhachHang, tenKhachHang, soDienThoai, email, diemTichLuy));
+                danhSachKhachHang.add(
+                        new KhachHang(maKhachHang, tenKhachHang, soDienThoai, email, diemTichLuy));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -81,7 +87,7 @@ public class KhachHangDAO {
     public KhachHang layKhachHangTheoMa(String maKhachHang) {
         String sql = "SELECT * FROM KhachHang WHERE MaKhachHang = ?";
         try (Connection conn = ConnectDB.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maKhachHang);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -89,7 +95,8 @@ public class KhachHangDAO {
                     String soDienThoai = rs.getString("SoDienThoai");
                     String email = rs.getString("Email");
                     int diemTichLuy = rs.getInt("DiemTichLuy");
-                    return new KhachHang(maKhachHang, tenKhachHang, soDienThoai, email, diemTichLuy);
+                    return new KhachHang(
+                            maKhachHang, tenKhachHang, soDienThoai, email, diemTichLuy);
                 }
             }
         } catch (SQLException e) {
