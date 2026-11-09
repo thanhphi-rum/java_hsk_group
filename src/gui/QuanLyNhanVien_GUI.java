@@ -30,9 +30,6 @@ public class QuanLyNhanVien_GUI extends JPanel {
 
         JPanel mainPanel = new JPanel(new BorderLayout());
 
-        // Tạo menu điều hướng từ Menu_GUI
-        JPanel menuPanel = new Menu_GUI(this);
-        mainPanel.add(menuPanel, BorderLayout.NORTH);
 
         // Tạo bảng danh sách nhân viên
         String[] columnNames = {

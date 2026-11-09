@@ -25,9 +25,6 @@ public class QuanLyPhim_GUI extends JPanel {
 
         JPanel mainPanel = new JPanel(new BorderLayout());
 
-        // Tạo menu điều hướng từ Menu_GUI
-        Menu_GUI menuPanel = new Menu_GUI(this);
-        mainPanel.add(menuPanel, BorderLayout.NORTH);
 
         // Tạo bảng danh sách phim
         String[] columnNames = {"Mã Phim", "Tên Phim", "Thể Loại", "Thời Lượng", "Trạng Thái"};

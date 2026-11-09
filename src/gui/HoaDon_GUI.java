@@ -31,8 +31,6 @@ public class HoaDon_GUI extends JPanel {
 
         JPanel mainPanel = new JPanel(new BorderLayout());
 
-        JPanel menuPanel = new Menu_GUI(this);
-        mainPanel.add(menuPanel, BorderLayout.NORTH);
 
         // ====== Table ======
         String[] columnNames = {
@@ -67,7 +65,6 @@ public class HoaDon_GUI extends JPanel {
         btnXoa = new JButton("Xóa");
         btnXoa.addActionListener(e -> xoaHoaDon());
         controlPanel.add(btnXoa);
-
         btnLamMoi = new JButton("Làm Mới");
         btnLamMoi.addActionListener(e -> lamMoiDanhSach());
         controlPanel.add(btnLamMoi);

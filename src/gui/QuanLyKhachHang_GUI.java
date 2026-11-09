@@ -26,9 +26,6 @@ public class QuanLyKhachHang_GUI extends JPanel {
 
         JPanel mainPanel = new JPanel(new BorderLayout());
 
-        // Tạo menu điều hướng từ Menu_GUI
-        JPanel menuPanel = new Menu_GUI(this);
-        mainPanel.add(menuPanel, BorderLayout.NORTH);
 
         // Tạo bảng danh sách khách hàng
         String[] columnNames = {
@@ -65,7 +62,6 @@ public class QuanLyKhachHang_GUI extends JPanel {
         JButton btnXoa = new JButton("Xóa");
         btnXoa.addActionListener(e -> xoaKhachHang());
         controlPanel.add(btnXoa);
-
         JButton btnLamMoi = new JButton("Làm Mới");
         btnLamMoi.addActionListener(e -> lamMoiDanhSach());
         controlPanel.add(btnLamMoi);

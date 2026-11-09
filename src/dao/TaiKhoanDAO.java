@@ -65,6 +65,7 @@ public class TaiKhoanDAO {
         }
     }
 
+<<<<<<< HEAD
     public boolean chuaCoTaiKhoan() throws SQLException {
         try (Connection c = ConnectDB.getConnection();
                 Statement s = c.createStatement();
@@ -106,4 +107,130 @@ public class TaiKhoanDAO {
             }
         }
     }
+=======
+    // ================= Quản lý tài khoản =================
+
+    public List<TaiKhoan> layTatCa() throws SQLException {
+        String sql = "SELECT tk.TenDangNhap, tk.TrangThai, nv.MaNhanVien, nv.TenNhanVien, nv.ChucVu "
+                + "FROM TaiKhoan tk JOIN NhanVien nv ON tk.MaNhanVien = nv.MaNhanVien "
+                + "ORDER BY tk.TenDangNhap";
+        List<TaiKhoan> ds = new ArrayList<>();
+        try (Connection conn = ketNoi();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                NhanVien nv = new NhanVien(rs.getString("MaNhanVien"));
+                nv.setTenNhanVien(rs.getString("TenNhanVien"));
+                nv.setChucVu(rs.getString("ChucVu"));
+                ds.add(new TaiKhoan(rs.getString("TenDangNhap"), null, rs.getString("TrangThai"), nv));
+            }
+        }
+        return ds;
+    }
+
+    /** Nhân viên chưa có tài khoản (mỗi nhân viên chỉ có 1 tài khoản). */
+    public List<NhanVien> layNhanVienChuaCoTaiKhoan() throws SQLException {
+        String sql = "SELECT MaNhanVien, TenNhanVien, ChucVu FROM NhanVien "
+                + "WHERE MaNhanVien NOT IN (SELECT MaNhanVien FROM TaiKhoan) ORDER BY MaNhanVien";
+        List<NhanVien> ds = new ArrayList<>();
+        try (Connection conn = ketNoi();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                NhanVien nv = new NhanVien(rs.getString("MaNhanVien"));
+                nv.setTenNhanVien(rs.getString("TenNhanVien"));
+                nv.setChucVu(rs.getString("ChucVu"));
+                ds.add(nv);
+            }
+        }
+        return ds;
+    }
+
+    public boolean tonTai(String tenDangNhap) throws SQLException {
+        try (Connection conn = ketNoi();
+             PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM TaiKhoan WHERE TenDangNhap = ?")) {
+            ps.setString(1, tenDangNhap);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    /** Tạo tài khoản mới (mật khẩu được băm trước khi lưu). */
+    public boolean them(String tenDangNhap, String matKhau, String maNhanVien) throws SQLException {
+        String sql = "INSERT INTO TaiKhoan (TenDangNhap, MatKhau, TrangThai, MaNhanVien) VALUES (?, ?, ?, ?)";
+        try (Connection conn = ketNoi();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, tenDangNhap);
+            ps.setString(2, bam(matKhau));
+            ps.setString(3, HOAT_DONG);
+            ps.setString(4, maNhanVien);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    public boolean doiMatKhau(String tenDangNhap, String matKhauMoi) throws SQLException {
+        try (Connection conn = ketNoi()) {
+            return capNhatMatKhau(conn, tenDangNhap, bam(matKhauMoi));
+        }
+    }
+
+    public boolean datTrangThai(String tenDangNhap, String trangThai) throws SQLException {
+        try (Connection conn = ketNoi();
+             PreparedStatement ps = conn.prepareStatement("UPDATE TaiKhoan SET TrangThai = ? WHERE TenDangNhap = ?")) {
+            ps.setString(1, trangThai);
+            ps.setString(2, tenDangNhap);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    public boolean xoa(String tenDangNhap) throws SQLException {
+        try (Connection conn = ketNoi();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM TaiKhoan WHERE TenDangNhap = ?")) {
+            ps.setString(1, tenDangNhap);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /** Số tài khoản quản lý đang hoạt động (để không khóa/xóa người quản lý cuối cùng). */
+    public int demQuanLyHoatDong() throws SQLException {
+        String sql = "SELECT COUNT(*) FROM TaiKhoan tk JOIN NhanVien nv ON tk.MaNhanVien = nv.MaNhanVien "
+                + "WHERE tk.TrangThai = ? AND nv.ChucVu LIKE N'%quản lý%'";
+        try (Connection conn = ketNoi();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, HOAT_DONG);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
+    // ================= Tiện ích =================
+
+    private boolean capNhatMatKhau(Connection conn, String tenDangNhap, String matKhauDaBam) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE TaiKhoan SET MatKhau = ? WHERE TenDangNhap = ?")) {
+            ps.setString(1, matKhauDaBam);
+            ps.setString(2, tenDangNhap);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    private static boolean laChuoiBam(String s) {
+        return s.length() == 64 && s.matches("[0-9a-fA-F]{64}");
+    }
+
+    /** Băm mật khẩu bằng SHA-256, trả về chuỗi hex. */
+    public static String bam(String s) {
+        try {
+            byte[] h = MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : h) {
+                sb.append(String.format("%02X", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+>>>>>>> 5bf5933 (update)
 }
