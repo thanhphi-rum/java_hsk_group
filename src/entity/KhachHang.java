@@ -63,4 +63,8 @@ public class KhachHang {
 		this.diemTichLuy = diemTichLuy;
 	}
 	
+	@Override
+	public String toString() {
+		return maKhachHang + " " + tenKhachHang + " " + email + " " + soDienThoai + " " + diemTichLuy;
+	}
 }
