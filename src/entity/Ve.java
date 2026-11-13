@@ -2,60 +2,42 @@ package entity;
 
 public class Ve {
     private String maVe;
-    private SuatChieu suatChieu;
-    private Ghe ghe;
-    private HoaDon hoaDon;
+    private GheSuatChieu maGheSuatChieu;
     private double giaTien;
-    
-	public Ve(String maVe, SuatChieu suatChieu, Ghe ghe, HoaDon hoaDon, double giaTien) {
+    private String trangThai;
+	public Ve(String maVe, GheSuatChieu maGheSuatChieu, double giaTien, String trangThai) {
 		this.maVe = maVe;
-		this.suatChieu = suatChieu;
-		this.ghe = ghe;
-		this.hoaDon = hoaDon;
+		this.maGheSuatChieu = maGheSuatChieu;
 		this.giaTien = giaTien;
+		this.trangThai = trangThai;
 	}
-
 	public Ve() {
 		super();
 	}
-
 	public String getMaVe() {
 		return maVe;
 	}
-
 	public void setMaVe(String maVe) {
 		this.maVe = maVe;
 	}
-
-	public SuatChieu getSuatChieu() {
-		return suatChieu;
+	public GheSuatChieu getMaGheSuatChieu() {
+		return maGheSuatChieu;
 	}
-
-	public void setSuatChieu(SuatChieu suatChieu) {
-		this.suatChieu = suatChieu;
+	public void setMaGheSuatChieu(GheSuatChieu maGheSuatChieu) {
+		this.maGheSuatChieu = maGheSuatChieu;
 	}
-
-	public Ghe getGhe() {
-		return ghe;
-	}
-
-	public void setGhe(Ghe ghe) {
-		this.ghe = ghe;
-	}
-
-	public HoaDon getHoaDon() {
-		return hoaDon;
-	}
-
-	public void setHoaDon(HoaDon hoaDon) {
-		this.hoaDon = hoaDon;
-	}
-
 	public double getGiaTien() {
 		return giaTien;
 	}
-
 	public void setGiaTien(double giaTien) {
 		this.giaTien = giaTien;
 	}
+	public String getTrangThai() {
+		return trangThai;
+	}
+	public void setTrangThai(String trangThai) {
+		this.trangThai = trangThai;
+	}
+    
+	
 }
