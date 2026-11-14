@@ -3,68 +3,64 @@ package entity;
 public class KhachHang {
     private String maKhachHang;
     private String tenKhachHang;
-    private String soDienThoai;
     private String email;
+    private String soDienThoai;
     private int diemTichLuy;
-    
-	public KhachHang(String maKhachHang, String tenKhachHang, String soDienThoai, String email, int diemTichLuy) {
-		this.maKhachHang = maKhachHang;
-		this.tenKhachHang = tenKhachHang;
-		this.soDienThoai = soDienThoai;
-		this.email = email;
-		this.diemTichLuy = diemTichLuy;
-	}
 
-	public KhachHang(String maKhachHang) {
-		this.maKhachHang = maKhachHang;
-	}
+    public KhachHang() {
+    }
 
-	public KhachHang() {
-		super();
-	}
+    public KhachHang(String maKhachHang, String tenKhachHang, String soDienThoai,
+                     String email, int diemTichLuy) {
+        this.maKhachHang = maKhachHang;
+        this.tenKhachHang = tenKhachHang;
+        this.email = email;
+        this.soDienThoai = soDienThoai;
+        this.diemTichLuy = diemTichLuy;
+    }
 
-	public String getMaKhachHang() {
-		return maKhachHang;
-	}
+    public String getMaKhachHang() {
+        return maKhachHang;
+    }
 
-	public void setMaKhachHang(String maKhachHang) {
-		this.maKhachHang = maKhachHang;
-	}
+    public void setMaKhachHang(String maKhachHang) {
+        this.maKhachHang = maKhachHang;
+    }
 
-	public String getTenKhachHang() {
-		return tenKhachHang;
-	}
+    public String getTenKhachHang() {
+        return tenKhachHang;
+    }
 
-	public void setTenKhachHang(String tenKhachHang) {
-		this.tenKhachHang = tenKhachHang;
-	}
+    public void setTenKhachHang(String tenKhachHang) {
+        this.tenKhachHang = tenKhachHang;
+    }
 
-	public String getSoDienThoai() {
-		return soDienThoai;
-	}
+    public String getEmail() {
+        return email;
+    }
 
-	public void setSoDienThoai(String soDienThoai) {
-		this.soDienThoai = soDienThoai;
-	}
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-	public String getEmail() {
-		return email;
-	}
+    public String getSoDienThoai() {
+        return soDienThoai;
+    }
 
-	public void setEmail(String email) {
-		this.email = email;
-	}
+    public void setSoDienThoai(String soDienThoai) {
+        this.soDienThoai = soDienThoai;
+    }
 
-	public int getDiemTichLuy() {
-		return diemTichLuy;
-	}
+    public int getDiemTichLuy() {
+        return diemTichLuy;
+    }
 
-	public void setDiemTichLuy(int diemTichLuy) {
-		this.diemTichLuy = diemTichLuy;
-	}
-	
-	@Override
-	public String toString() {
-		return maKhachHang + " " + tenKhachHang + " " + email + " " + soDienThoai + " " + diemTichLuy;
-	}
+    public void setDiemTichLuy(int diemTichLuy) {
+        this.diemTichLuy = diemTichLuy;
+    }
+
+    @Override
+    public String toString() {
+        return tenKhachHang + " - " + soDienThoai;
+    }
 }

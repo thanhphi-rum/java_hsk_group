@@ -1,48 +1,49 @@
 package entity;
 
+import java.math.BigDecimal;
+
 public class ChiTietPhieuDatVe {
-	private PhieuDatVe maPhieuDatVe;
-	private Ve maVe;
-	private double donGia;
-	
-	public ChiTietPhieuDatVe(PhieuDatVe maPhieuDatVe, Ve maVe, double donGia) {
-		this.maPhieuDatVe = maPhieuDatVe;
-		this.maVe = maVe;
-		this.donGia = donGia;
-	}
+    private PhieuDatVe phieuDatVe;
+    private Ve ve;
+    private BigDecimal donGia;
 
-	public ChiTietPhieuDatVe() {
-		super();
-	}
+    public ChiTietPhieuDatVe() {
+    }
 
-	public PhieuDatVe getMaPhieuDatVe() {
-		return maPhieuDatVe;
-	}
+    public ChiTietPhieuDatVe(PhieuDatVe phieuDatVe, Ve ve, BigDecimal donGia) {
+        this.phieuDatVe = phieuDatVe;
+        this.ve = ve;
+        this.donGia = donGia;
+    }
 
-	public void setMaPhieuDatVe(PhieuDatVe maPhieuDatVe) {
-		this.maPhieuDatVe = maPhieuDatVe;
-	}
+    public PhieuDatVe getPhieuDatVe() {
+        return phieuDatVe;
+    }
 
-	public Ve getMaVe() {
-		return maVe;
-	}
+    public void setPhieuDatVe(PhieuDatVe phieuDatVe) {
+        this.phieuDatVe = phieuDatVe;
+    }
 
-	public void setMaVe(Ve maVe) {
-		this.maVe = maVe;
-	}
+    public Ve getVe() {
+        return ve;
+    }
 
-	public double getDonGia() {
-		return donGia;
-	}
+    public void setVe(Ve ve) {
+        this.ve = ve;
+    }
 
-	public void setDonGia(double donGia) {
-		this.donGia = donGia;
-	}
+    public BigDecimal getDonGia() {
+        return donGia;
+    }
 
-	@Override
-	public String toString() {
-		return "ChiTietPhieuDatVe [donGia=" + donGia + "]";
-	}
-	
-	
+    public void setDonGia(BigDecimal donGia) {
+        this.donGia = donGia;
+    }
+
+    @Override
+    public String toString() {
+        String maPhieu = phieuDatVe == null ? "" : phieuDatVe.getMaPhieuDatVe();
+        String maVe = ve == null ? "" : ve.getMaVe();
+        return "Phiếu: " + maPhieu + ", vé: " + maVe + ", đơn giá: " + donGia;
+    }
 }
