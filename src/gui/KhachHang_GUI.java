@@ -47,7 +47,7 @@ public class KhachHang_GUI extends JFrame implements ActionListener, MouseListen
 
 		setTitle("Quản lý khách hàng");
 		setSize(750, 520);
-		setDefaultCloseOperation(EXIT_ON_CLOSE);
+		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		setLocationRelativeTo(null);
 
 		// ---- Tiêu đề ----

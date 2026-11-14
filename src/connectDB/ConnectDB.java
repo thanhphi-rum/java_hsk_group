@@ -2,39 +2,53 @@ package connectDB;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.SQLException;
 
+/** Kết nối SQL Server; thông tin kết nối lấy từ biến môi trường. */
 public class ConnectDB {
-	public static Connection con = null;
-	private static ConnectDB instance = new ConnectDB();
+    private static final ConnectDB instance = new ConnectDB();
+    private static Connection connection;
 
-	public static ConnectDB getInstance() {
-		return instance;
-	}
+    private ConnectDB() {
+    }
 
-	public void connect() {
-		String url = "jdbc:sqlserver://localhost:1433;databasename=QL_RapPhim";
-		String user = "sa";
-		String password = "sapassword"; // đổi thành mật khẩu SQL Server trên máy bạn
-		try {
-			if (con == null || con.isClosed()) {
-				con = DriverManager.getConnection(url, user, password);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+    public static ConnectDB getInstance() {
+        return instance;
+    }
 
-	public static void discon() {
-		if (con != null) {
-			try {
-				con.close();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-	}
+    public void connect() {
+        getConnection();
+    }
 
-	public static Connection getConnection() {
-		return con;
-	}
+    public static synchronized Connection getConnection() {
+        try {
+            if (connection == null || connection.isClosed()) {
+                String url = System.getenv("RAPPHIM_DB_URL");
+                String user = System.getenv("RAPPHIM_DB_USER");
+                String password = System.getenv("RAPPHIM_DB_PASSWORD");
+                if (url == null || url.trim().isEmpty()
+                        || user == null || password == null) {
+                    throw new IllegalStateException(
+                            "Hãy thiết lập RAPPHIM_DB_URL, RAPPHIM_DB_USER và "
+                                    + "RAPPHIM_DB_PASSWORD trước khi mở ứng dụng.");
+                }
+                connection = DriverManager.getConnection(url, user, password);
+            }
+            return connection;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Không kết nối được SQL Server.", ex);
+        }
+    }
+
+    public static synchronized void disconnect() {
+        if (connection != null) {
+            try {
+                connection.close();
+            } catch (SQLException ex) {
+                throw new IllegalStateException("Không đóng được kết nối database.", ex);
+            } finally {
+                connection = null;
+            }
+        }
+    }
 }

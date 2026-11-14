@@ -10,8 +10,8 @@ public class KhachHang {
     public KhachHang() {
     }
 
-    public KhachHang(String maKhachHang, String tenKhachHang, String soDienThoai,
-                     String email, int diemTichLuy) {
+    public KhachHang(String maKhachHang, String tenKhachHang, String email,
+                     String soDienThoai, int diemTichLuy) {
         this.maKhachHang = maKhachHang;
         this.tenKhachHang = tenKhachHang;
         this.email = email;
