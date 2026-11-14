@@ -38,6 +38,9 @@ public class TaoPhieuDatVeService {
         return veDAO.layGheTrongSuat(maSuatChieu);
     }
 
+    public ArrayList<String> layTatCaGheTheoSuat(String maSuatChieu) throws SQLException {
+        return veDAO.layTatCaGheTheoSuat(maSuatChieu);
+    }
     public BigDecimal layGiaVeTheoSuat(String maSuatChieu) throws SQLException {
         return veDAO.layGiaVeTheoSuat(maSuatChieu);
     }

@@ -64,6 +64,20 @@ public class Ve_DAO {
         return danhSach;
     }
 
+    /** Lấy toàn bộ ghế của suất để vẽ sơ đồ, gồm cả ghế đã được giữ/đặt. */
+    public ArrayList<String> layTatCaGheTheoSuat(String maSuatChieu) throws SQLException {
+        ArrayList<String> danhSach = new ArrayList<String>();
+        String sql = "SELECT maGhe FROM GheSuatChieu WHERE maSuatChieu = ? ORDER BY maGhe";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, maSuatChieu);
+            try (ResultSet result = statement.executeQuery()) {
+                while (result.next()) {
+                    danhSach.add(result.getString("maGhe"));
+                }
+            }
+        }
+        return danhSach;
+    }
     public boolean giuGhe(String maSuatChieu, String maGhe) throws SQLException {
         String sql = "UPDATE GheSuatChieu SET trangThai = N'Đang giữ' "
                 + "WHERE maSuatChieu = ? AND maGhe = ? AND trangThai = N'Trống'";
