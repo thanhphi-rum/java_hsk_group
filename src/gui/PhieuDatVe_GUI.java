@@ -1,8 +1,10 @@
 package gui;
 
 import dao.ComboBapNuoc_DAO;
+import dao.KhachHang_DAO;
 import dao.PhieuDatVe_DAO;
 import entity.ComboBapNuoc;
+import entity.KhachHang;
 import entity.PhieuDatVe;
 import service.TaoPhieuDatVeService;
 
@@ -11,15 +13,16 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
+import javax.swing.JToggleButton;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.SwingUtilities;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.DefaultListModel;
+import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -27,14 +30,26 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Insets;
 import java.awt.LayoutManager;
+import java.awt.Toolkit;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 /** Màn hình đặt vé tại quầy; ghế và giá được lấy từ database. */
 public class PhieuDatVe_GUI extends JFrame {
@@ -44,30 +59,49 @@ public class PhieuDatVe_GUI extends JFrame {
     private static final Color CHU = new Color(48, 58, 72);
 
     private final TaoPhieuDatVeService service;
+    private final Connection connection;
     private final PhieuDatVe_DAO phieuDAO;
     private final ComboBapNuoc_DAO comboDAO;
+    private final KhachHang_DAO khachHangDAO;
     private final JTextField txtMaKhachHang = new JTextField();
+    private final JTextField txtTimPhieu = new JTextField(14);
     private final JComboBox<String> cboSuatChieu = new JComboBox<String>();
     private final JLabel lblGiaVe = new JLabel("Chọn suất chiếu");
+    private final JLabel lblThongTinKhachHang = new JLabel("Chưa chọn khách hàng");
     private final JPanel panelSoDoGhe = new JPanel(new GridBagLayout());
     private final Map<String, JToggleButton> nutGhe = new LinkedHashMap<String, JToggleButton>();
     private final JLabel lblGheDaChon = new JLabel("Chưa chọn ghế");
+    private final JLabel lblTamTinh = new JLabel("Tạm tính: 0 đồng");
     private final DefaultTableModel phieuModel;
     private final JTable phieuTable;
     private final DefaultTableModel comboModel;
     private final JTable comboTable;
+    private final JButton btnHuy = new JButton("Hủy phiếu đã chọn");
+    private KhachHang khachHangDaChon;
+    private KhachHang khachHangVuaTao;
+    private BigDecimal giaVeHienTai = BigDecimal.ZERO;
+    private boolean dangTaiSuatChieu;
     private String maPhieuVuaTao;
+    private String maSuatChieuVuaTao;
+    private List<String> gheVuaTao = new ArrayList<String>();
+    private BigDecimal giaVeVuaTao = BigDecimal.ZERO;
     private Map<String, Integer> comboVuaChon = new LinkedHashMap<String, Integer>();
+    private Map<String, BigDecimal> giaComboVuaChon = new LinkedHashMap<String, BigDecimal>();
 
     public PhieuDatVe_GUI(Connection connection) {
+        this.connection = connection;
         service = new TaoPhieuDatVeService(connection);
         phieuDAO = new PhieuDatVe_DAO(connection);
         comboDAO = new ComboBapNuoc_DAO(connection);
+        khachHangDAO = new KhachHang_DAO(connection);
 
         setTitle("Tiếp nhận đặt vé tại quầy");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setMinimumSize(new Dimension(980, 700));
-        setSize(1120, 790);
+        Dimension kichThuocManHinh = Toolkit.getDefaultToolkit().getScreenSize();
+        int chieuRong = Math.max(760, Math.min(1120, kichThuocManHinh.width - 40));
+        int chieuCao = Math.max(560, Math.min(790, kichThuocManHinh.height - 80));
+        setMinimumSize(new Dimension(Math.min(900, chieuRong), Math.min(600, chieuCao)));
+        setSize(chieuRong, chieuCao);
         setLocationRelativeTo(null);
 
         JPanel root = new JPanel(new BorderLayout(0, 14));
@@ -81,7 +115,7 @@ public class PhieuDatVe_GUI extends JFrame {
         JLabel lblTieuDe = new JLabel("TIẾP NHẬN ĐẶT VÉ TẠI QUẦY");
         lblTieuDe.setFont(new Font("Segoe UI", Font.BOLD, 21));
         lblTieuDe.setForeground(Color.WHITE);
-        JLabel lblMoTa = new JLabel("Chọn khách hàng, suất chiếu, ghế và combo");
+        JLabel lblMoTa = new JLabel("Nhân viên tiếp nhận khách, chọn suất chiếu, ghế và combo");
         lblMoTa.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lblMoTa.setForeground(new Color(220, 230, 242));
         header.add(lblTieuDe, BorderLayout.NORTH);
@@ -91,41 +125,32 @@ public class PhieuDatVe_GUI extends JFrame {
         JPanel thongTin = new JPanel(new GridLayout(1, 2, 14, 0));
         thongTin.setOpaque(false);
 
-        JPanel pKhachGhe = taoThe(new BorderLayout(0, 12));
-        JLabel lblMaKhach = taoNhan("Mã khách hàng");
+        JPanel pKhachHang = taoThe(new BorderLayout(0, 10));
+        JLabel lblMaKhach = taoNhan("Khách hàng");
         txtMaKhachHang.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         txtMaKhachHang.setForeground(CHU);
+        txtMaKhachHang.setEditable(false);
         txtMaKhachHang.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(207, 216, 228)),
                 BorderFactory.createEmptyBorder(7, 10, 7, 10)));
-        txtMaKhachHang.setPreferredSize(new Dimension(220, 36));
+        txtMaKhachHang.setPreferredSize(new Dimension(120, 36));
         JPanel pNhapKhach = new JPanel(new BorderLayout(0, 6));
         pNhapKhach.setOpaque(false);
         pNhapKhach.add(lblMaKhach, BorderLayout.NORTH);
-        pNhapKhach.add(txtMaKhachHang, BorderLayout.CENTER);
-
-        JLabel lblChonGhe = taoNhan("Sơ đồ ghế — chọn một hoặc nhiều ghế");
-        panelSoDoGhe.setBackground(Color.WHITE);
-        panelSoDoGhe.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        JScrollPane scrollGhe = new JScrollPane(panelSoDoGhe,
-                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollGhe.setPreferredSize(new Dimension(300, 170));
-        scrollGhe.setBorder(BorderFactory.createLineBorder(new Color(218, 225, 235)));
-        scrollGhe.getViewport().setBackground(Color.WHITE);
-        JPanel pGhe = new JPanel(new BorderLayout(0, 7));
-        pGhe.setOpaque(false);
-        pGhe.add(lblChonGhe, BorderLayout.NORTH);
-        pGhe.add(scrollGhe, BorderLayout.CENTER);
-        JPanel pChuThichGhe = new JPanel(new BorderLayout(8, 0));
-        pChuThichGhe.setOpaque(false);
-        pChuThichGhe.add(taoChuThichGhe(), BorderLayout.WEST);
-        lblGheDaChon.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblGheDaChon.setForeground(XANH_DAM);
-        pChuThichGhe.add(lblGheDaChon, BorderLayout.EAST);
-        pGhe.add(pChuThichGhe, BorderLayout.SOUTH);
-        pKhachGhe.add(pNhapKhach, BorderLayout.NORTH);
-        pKhachGhe.add(pGhe, BorderLayout.CENTER);
+        JPanel pNutKhach = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        pNutKhach.setOpaque(false);
+        JButton btnTimKhach = new JButton("Tìm khách");
+        JButton btnQuanLyKhach = new JButton("Thêm / sửa khách");
+        styleButton(btnTimKhach, XANH);
+        styleButton(btnQuanLyKhach, new Color(92, 108, 126));
+        pNutKhach.add(txtMaKhachHang);
+        pNutKhach.add(btnTimKhach);
+        pNutKhach.add(btnQuanLyKhach);
+        pNhapKhach.add(pNutKhach, BorderLayout.CENTER);
+        lblThongTinKhachHang.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblThongTinKhachHang.setForeground(new Color(105, 116, 130));
+        pKhachHang.add(pNhapKhach, BorderLayout.NORTH);
+        pKhachHang.add(lblThongTinKhachHang, BorderLayout.CENTER);
 
         JPanel pSuatGia = taoThe(new BorderLayout(0, 12));
         JLabel lblSuat = taoNhan("Suất chiếu đang mở bán");
@@ -152,8 +177,33 @@ public class PhieuDatVe_GUI extends JFrame {
         pSuatGia.add(pChonSuat, BorderLayout.NORTH);
         pSuatGia.add(pGia, BorderLayout.CENTER);
 
-        thongTin.add(pKhachGhe);
+        thongTin.add(pKhachHang);
         thongTin.add(pSuatGia);
+
+        JLabel lblChonGhe = taoNhan("Sơ đồ ghế — bấm ghế trống để chọn");
+        panelSoDoGhe.setBackground(Color.WHITE);
+        panelSoDoGhe.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JScrollPane scrollGhe = new JScrollPane(panelSoDoGhe,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollGhe.setBorder(BorderFactory.createLineBorder(new Color(218, 225, 235)));
+        scrollGhe.getViewport().setBackground(Color.WHITE);
+        JPanel pGhe = taoThe(new BorderLayout(0, 8));
+        JPanel pTieuDeGhe = new JPanel(new BorderLayout());
+        pTieuDeGhe.setOpaque(false);
+        pTieuDeGhe.add(lblChonGhe, BorderLayout.WEST);
+        pTieuDeGhe.add(taoChuThichGhe(), BorderLayout.EAST);
+        pGhe.add(pTieuDeGhe, BorderLayout.NORTH);
+        pGhe.add(scrollGhe, BorderLayout.CENTER);
+        JPanel pTongKetGhe = new JPanel(new BorderLayout(8, 0));
+        pTongKetGhe.setOpaque(false);
+        lblGheDaChon.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblGheDaChon.setForeground(XANH_DAM);
+        lblTamTinh.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblTamTinh.setForeground(XANH);
+        pTongKetGhe.add(lblGheDaChon, BorderLayout.CENTER);
+        pTongKetGhe.add(lblTamTinh, BorderLayout.EAST);
+        pGhe.add(pTongKetGhe, BorderLayout.SOUTH);
 
         phieuModel = new DefaultTableModel(
                 new String[] {"Mã phiếu", "Ngày đặt", "Mã khách hàng", "Trạng thái"}, 0) {
@@ -183,40 +233,69 @@ public class PhieuDatVe_GUI extends JFrame {
         comboTable = new JTable(comboModel);
         styleTable(comboTable);
 
-        JPanel pPhieu = taoKhuBang("PHIẾU ĐẶT GẦN ĐÂY", new JScrollPane(phieuTable));
+        JPanel pPhieu = taoKhuPhieu(new JScrollPane(phieuTable));
+        JButton btnQuanLyCombo = new JButton("Quản lý combo");
+        styleButton(btnQuanLyCombo, new Color(92, 108, 126));
         JPanel pCombo = taoKhuBang(
-                "CHỌN COMBO ĐỂ BÀN GIAO CHO BƯỚC LẬP HÓA ĐƠN",
-                new JScrollPane(comboTable));
-        JSplitPane chiaBang = new JSplitPane(JSplitPane.VERTICAL_SPLIT, pPhieu, pCombo);
-        chiaBang.setResizeWeight(0.46);
+                "COMBO BÀN GIAO CHO BƯỚC LẬP HÓA ĐƠN",
+                new JScrollPane(comboTable), btnQuanLyCombo);
+        JSplitPane chiaBang = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, pCombo, pPhieu);
+        chiaBang.setResizeWeight(0.52);
         chiaBang.setDividerSize(8);
         chiaBang.setBorder(null);
         chiaBang.setBackground(NEN);
 
+        JSplitPane chiaNoiDung = new JSplitPane(JSplitPane.VERTICAL_SPLIT, pGhe, chiaBang);
+        chiaNoiDung.setResizeWeight(0.58);
+        chiaNoiDung.setDividerSize(8);
+        chiaNoiDung.setBorder(null);
+        chiaNoiDung.setBackground(NEN);
+
         JPanel noiDung = new JPanel(new BorderLayout(0, 14));
         noiDung.setOpaque(false);
         noiDung.add(thongTin, BorderLayout.NORTH);
-        noiDung.add(chiaBang, BorderLayout.CENTER);
+        noiDung.add(chiaNoiDung, BorderLayout.CENTER);
         root.add(noiDung, BorderLayout.CENTER);
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
         JButton btnTao = new JButton("Tạo phiếu đặt");
-        JButton btnHuy = new JButton("Hủy phiếu đã chọn");
-        JButton btnTaiLai = new JButton("Tải lại danh sách");
+        JButton btnTaiLai = new JButton("Làm mới dữ liệu");
         styleButton(btnTao, XANH);
         styleButton(btnHuy, new Color(184, 78, 73));
         styleButton(btnTaiLai, new Color(92, 108, 126));
+        btnHuy.setEnabled(false);
         actions.add(btnTao);
         actions.add(btnHuy);
         actions.add(btnTaiLai);
         root.add(actions, BorderLayout.SOUTH);
 
-        cboSuatChieu.addActionListener(event -> taiGheVaGia());
+        cboSuatChieu.addActionListener(event -> {
+            if (!dangTaiSuatChieu) {
+                taiGheVaGia();
+            }
+        });
+        btnTimKhach.addActionListener(event -> timVaChonKhachHang());
+        btnQuanLyKhach.addActionListener(event -> new KhachHang_GUI().setVisible(true));
+        txtTimPhieu.addActionListener(event -> taiDanhSachPhieu(txtTimPhieu.getText()));
+        phieuTable.getSelectionModel().addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting()) {
+                capNhatTrangThaiNutHuy();
+            }
+        });
+        comboModel.addTableModelListener(event -> capNhatTongTienDuKien());
+        btnQuanLyCombo.addActionListener(event -> moManHinhQuanLyCombo());
         btnTao.addActionListener(event -> taoPhieu());
         btnHuy.addActionListener(event -> huyPhieuDangChon());
-        btnTaiLai.addActionListener(event -> taiDuLieu());
+        btnTaiLai.addActionListener(event -> {
+            txtTimPhieu.setText("");
+            taiDuLieu();
+        });
         taiDuLieu();
+        SwingUtilities.invokeLater(() -> {
+            chiaNoiDung.setDividerLocation(0.58);
+            chiaBang.setDividerLocation(0.52);
+        });
     }
 
     private JPanel taoThe(LayoutManager layout) {
@@ -228,15 +307,113 @@ public class PhieuDatVe_GUI extends JFrame {
         return panel;
     }
 
-    private JPanel taoKhuBang(String tieuDe, JScrollPane noiDung) {
+    private JPanel taoKhuBang(String tieuDe, JScrollPane noiDung, JButton nutHanhDong) {
         JPanel panel = taoThe(new BorderLayout(0, 9));
+        JPanel dauBang = new JPanel(new BorderLayout(8, 0));
+        dauBang.setOpaque(false);
         JLabel label = new JLabel(tieuDe);
         label.setFont(new Font("Segoe UI", Font.BOLD, 13));
         label.setForeground(XANH_DAM);
+        nutHanhDong.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        nutHanhDong.setBorder(BorderFactory.createEmptyBorder(7, 12, 7, 12));
+        nutHanhDong.setToolTipText("Mở màn hình thêm và cập nhật combo");
+        dauBang.add(label, BorderLayout.CENTER);
+        dauBang.add(nutHanhDong, BorderLayout.EAST);
         noiDung.setBorder(BorderFactory.createLineBorder(new Color(222, 228, 237)));
-        panel.add(label, BorderLayout.NORTH);
+        panel.add(dauBang, BorderLayout.NORTH);
         panel.add(noiDung, BorderLayout.CENTER);
         return panel;
+    }
+
+    private void moManHinhQuanLyCombo() {
+        ComboBapNuoc_GUI cuaSoCombo = new ComboBapNuoc_GUI(connection);
+        cuaSoCombo.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent event) {
+                taiDanhSachCombo();
+            }
+        });
+        cuaSoCombo.setLocationRelativeTo(this);
+        cuaSoCombo.setVisible(true);
+    }
+
+    private JPanel taoKhuPhieu(JScrollPane noiDung) {
+        JPanel panel = taoThe(new BorderLayout(0, 8));
+        JLabel tieuDe = new JLabel("TRA CỨU PHIẾU ĐẶT");
+        tieuDe.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tieuDe.setForeground(XANH_DAM);
+        JPanel thanhTim = new JPanel(new BorderLayout(6, 0));
+        thanhTim.setOpaque(false);
+        thanhTim.add(new JLabel("Mã phiếu / mã khách:"), BorderLayout.WEST);
+        JButton btnTim = new JButton("Tìm");
+        styleButton(btnTim, XANH);
+        thanhTim.add(txtTimPhieu, BorderLayout.CENTER);
+        thanhTim.add(btnTim, BorderLayout.EAST);
+        JPanel phanDau = new JPanel(new BorderLayout(0, 7));
+        phanDau.setOpaque(false);
+        phanDau.add(tieuDe, BorderLayout.NORTH);
+        phanDau.add(thanhTim, BorderLayout.CENTER);
+        noiDung.setBorder(BorderFactory.createLineBorder(new Color(222, 228, 237)));
+        panel.add(phanDau, BorderLayout.NORTH);
+        panel.add(noiDung, BorderLayout.CENTER);
+        btnTim.addActionListener(event -> taiDanhSachPhieu(txtTimPhieu.getText()));
+        return panel;
+    }
+
+    private void timVaChonKhachHang() {
+        String tuKhoa = JOptionPane.showInputDialog(this,
+                "Nhập mã, tên hoặc số điện thoại khách hàng:",
+                "Tìm khách hàng", JOptionPane.QUESTION_MESSAGE);
+        if (tuKhoa == null) {
+            return;
+        }
+        if (tuKhoa.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Nhập thông tin để tìm khách hàng.");
+            return;
+        }
+        try {
+            ArrayList<KhachHang> danhSach = khachHangDAO.timKhachHangChoTiepNhan(tuKhoa);
+            if (danhSach.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Không tìm thấy khách hàng. Chọn ‘Thêm / sửa khách’ để cập nhật dữ liệu.");
+                return;
+            }
+            String[] luaChon = new String[danhSach.size()];
+            for (int i = 0; i < danhSach.size(); i++) {
+                KhachHang khachHang = danhSach.get(i);
+                luaChon[i] = khachHang.getMaKhachHang() + " — "
+                        + khachHang.getTenKhachHang() + " — "
+                        + khachHang.getSoDienThoai();
+            }
+            String daChon = (String) JOptionPane.showInputDialog(this,
+                    "Chọn đúng khách hàng:", "Kết quả tìm kiếm",
+                    JOptionPane.PLAIN_MESSAGE, null, luaChon, luaChon[0]);
+            if (daChon == null) {
+                return;
+            }
+            for (int i = 0; i < luaChon.length; i++) {
+                if (luaChon[i].equals(daChon)) {
+                    khachHangDaChon = danhSach.get(i);
+                    txtMaKhachHang.setText(khachHangDaChon.getMaKhachHang());
+                    lblThongTinKhachHang.setText(khachHangDaChon.getTenKhachHang()
+                            + "  •  " + khachHangDaChon.getSoDienThoai());
+                    return;
+                }
+            }
+        } catch (SQLException ex) {
+            baoLoi(ex);
+        }
+    }
+
+    private void capNhatTrangThaiNutHuy() {
+        int hang = phieuTable.getSelectedRow();
+        if (hang < 0) {
+            btnHuy.setEnabled(false);
+            return;
+        }
+        int dongModel = phieuTable.convertRowIndexToModel(hang);
+        String trangThai = phieuModel.getValueAt(dongModel, 3).toString();
+        btnHuy.setEnabled("Chờ thanh toán".equals(trangThai));
     }
 
     private JLabel taoNhan(String noiDung) {
@@ -461,28 +638,71 @@ public class PhieuDatVe_GUI extends JFrame {
 
     private void capNhatGheDaChon() {
         List<String> danhSach = layGheDaChon();
-        lblGheDaChon.setText(danhSach.isEmpty()
-                ? "Chưa chọn ghế" : "Đang chọn: " + String.join(", ", danhSach));
+        lblGheDaChon.setText(danhSach.isEmpty() ? "Đã chọn 0 ghế"
+                : "Đã chọn " + danhSach.size() + " ghế: " + String.join(", ", danhSach));
+        capNhatTongTienDuKien();
     }
+
+    private void capNhatTongTienDuKien() {
+        BigDecimal tongTien = giaVeHienTai.multiply(BigDecimal.valueOf(layGheDaChon().size()));
+        if (comboModel != null) {
+            for (int row = 0; row < comboModel.getRowCount(); row++) {
+                if (Boolean.TRUE.equals(comboModel.getValueAt(row, 0))) {
+                    try {
+                        BigDecimal giaCombo = new BigDecimal(comboModel.getValueAt(row, 3).toString());
+                        int soLuong = Integer.parseInt(comboModel.getValueAt(row, 4).toString());
+                        if (soLuong > 0) {
+                            tongTien = tongTien.add(giaCombo.multiply(BigDecimal.valueOf(soLuong)));
+                        }
+                    } catch (NumberFormatException | NullPointerException ex) {
+                        // Khi ô số lượng đang được sửa, sẽ tính lại sau khi giá trị hợp lệ được nhập.
+                    }
+                }
+            }
+        }
+        lblTamTinh.setText("Tạm tính: " + tongTien.toPlainString() + " đồng");
+    }
+
     private void taoPhieu() {
         try {
-            String maKhachHang = txtMaKhachHang.getText().trim();
-            String maSuatChieu = (String) cboSuatChieu.getSelectedItem();
+            if (comboTable.isEditing()) {
+                comboTable.getCellEditor().stopCellEditing();
+            }
+            if (khachHangDaChon == null) {
+                throw new IllegalArgumentException("Tìm và chọn khách hàng trước khi tạo phiếu.");
+            }
+            String maKhachHang = khachHangDaChon.getMaKhachHang();
+            String maSuatChieu = layMaSuatChieuDangChon();
             List<String> danhSachGhe = layGheDaChon();
             Map<String, Integer> comboChonTam = docComboDuocChon();
+            Map<String, BigDecimal> giaComboChonTam = docGiaComboDuocChon(comboChonTam);
 
             if (maSuatChieu == null) {
                 throw new IllegalArgumentException("Chọn suất chiếu trước.");
             }
+            if (danhSachGhe.isEmpty()) {
+                throw new IllegalArgumentException("Chọn ít nhất một ghế còn trống.");
+            }
+            String xacNhan = "Khách: " + khachHangDaChon.getTenKhachHang()
+                    + " (" + maKhachHang + ")\nGhế: " + String.join(", ", danhSachGhe)
+                    + "\n" + lblTamTinh.getText()
+                    + "\nTạo phiếu chờ thanh toán và chuyển combo sang bước lập hóa đơn?";
+            if (JOptionPane.showConfirmDialog(this, xacNhan, "Xác nhận đặt vé",
+                    JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+                return;
+            }
             maPhieuVuaTao = service.taoPhieu(maKhachHang, maSuatChieu, danhSachGhe);
+            khachHangVuaTao = khachHangDaChon;
             comboVuaChon = comboChonTam;
+            giaComboVuaChon = giaComboChonTam;
+            maSuatChieuVuaTao = maSuatChieu;
+            gheVuaTao = new ArrayList<String>(danhSachGhe);
+            giaVeVuaTao = service.getGiaVePhieuVuaTao();
             taiDuLieu();
 
-            String thongBao = "Đã tạo phiếu " + maPhieuVuaTao + ".";
-            if (!comboVuaChon.isEmpty()) {
-                thongBao += " Đã chọn " + comboVuaChon.size()
-                        + " loại combo để bàn giao bước lập hóa đơn.";
-            }
+            String thongBao = "Đã tạo phiếu " + maPhieuVuaTao + ".\nGhế: "
+                    + String.join(", ", gheVuaTao)
+                    + "\nPhiếu đang chờ thanh toán; dữ liệu combo đã sẵn sàng cho bước lập hóa đơn.";
             JOptionPane.showMessageDialog(this, thongBao);
         } catch (SQLException | IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Không thể tạo phiếu",
@@ -506,6 +726,18 @@ public class PhieuDatVe_GUI extends JFrame {
         return danhSach;
     }
 
+    private Map<String, BigDecimal> docGiaComboDuocChon(Map<String, Integer> comboDuocChon) {
+        Map<String, BigDecimal> giaTheoMa = new LinkedHashMap<String, BigDecimal>();
+        for (int row = 0; row < comboModel.getRowCount(); row++) {
+            String maCombo = comboModel.getValueAt(row, 1).toString();
+            if (comboDuocChon.containsKey(maCombo)) {
+                giaTheoMa.put(maCombo,
+                        new BigDecimal(comboModel.getValueAt(row, 3).toString()));
+            }
+        }
+        return giaTheoMa;
+    }
+
     private void huyPhieuDangChon() {
         int row = phieuTable.getSelectedRow();
         if (row < 0) {
@@ -513,6 +745,12 @@ public class PhieuDatVe_GUI extends JFrame {
             return;
         }
         String maPhieu = phieuModel.getValueAt(phieuTable.convertRowIndexToModel(row), 0).toString();
+        int dongModel = phieuTable.convertRowIndexToModel(row);
+        if (!"Chờ thanh toán".equals(phieuModel.getValueAt(dongModel, 3).toString())) {
+            JOptionPane.showMessageDialog(this,
+                    "Chỉ phiếu đang chờ thanh toán mới được hủy tại bước tiếp nhận.");
+            return;
+        }
         if (JOptionPane.showConfirmDialog(this, "Hủy phiếu " + maPhieu + "?",
                 "Xác nhận", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
             return;
@@ -521,9 +759,14 @@ public class PhieuDatVe_GUI extends JFrame {
             service.huyPhieu(maPhieu);
             if (maPhieu.equals(maPhieuVuaTao)) {
                 maPhieuVuaTao = null;
+                khachHangVuaTao = null;
+                maSuatChieuVuaTao = null;
+                gheVuaTao.clear();
+                giaVeVuaTao = BigDecimal.ZERO;
                 comboVuaChon.clear();
+                giaComboVuaChon.clear();
             }
-            taiDanhSachPhieu();
+            taiDanhSachPhieu(txtTimPhieu.getText());
             taiGheVaGia();
             JOptionPane.showMessageDialog(this, "Đã hủy phiếu.");
         } catch (SQLException | IllegalArgumentException ex) {
@@ -533,47 +776,74 @@ public class PhieuDatVe_GUI extends JFrame {
 
     private void taiDuLieu() {
         taiSuatChieu();
-        taiDanhSachPhieu();
+        taiDanhSachPhieu(txtTimPhieu.getText());
         taiDanhSachCombo();
     }
 
     private void taiSuatChieu() {
         try {
-            String dangChon = (String) cboSuatChieu.getSelectedItem();
+            String maDangChon = layMaSuatChieuDangChon();
             ArrayList<String> danhSach = service.laySuatChieuDangMoBan();
+            dangTaiSuatChieu = true;
             cboSuatChieu.removeAllItems();
-            for (String maSuat : danhSach) {
-                cboSuatChieu.addItem(maSuat);
+            for (String moTaSuat : danhSach) {
+                cboSuatChieu.addItem(moTaSuat);
             }
-            if (dangChon != null) {
-                cboSuatChieu.setSelectedItem(dangChon);
+            if (maDangChon != null) {
+                for (int i = 0; i < cboSuatChieu.getItemCount(); i++) {
+                    if (maDangChon.equals(layMaSuatChieu(cboSuatChieu.getItemAt(i)))) {
+                        cboSuatChieu.setSelectedIndex(i);
+                        break;
+                    }
+                }
             }
+            dangTaiSuatChieu = false;
             taiGheVaGia();
         } catch (SQLException ex) {
+            dangTaiSuatChieu = false;
             baoLoi(ex);
         }
     }
 
     private void taiGheVaGia() {
-        String maSuat = (String) cboSuatChieu.getSelectedItem();
+        String maSuat = layMaSuatChieuDangChon();
         if (maSuat == null) {
+            giaVeHienTai = BigDecimal.ZERO;
             lblGiaVe.setText("Chọn suất chiếu");
             hienThiSoDoGhe(new ArrayList<String>(), new ArrayList<String>());
+            capNhatTongTienDuKien();
             return;
         }
         try {
             ArrayList<String> tatCaGhe = service.layTatCaGheTheoSuat(maSuat);
             ArrayList<String> gheTrong = service.layGheTrongSuat(maSuat);
             hienThiSoDoGhe(tatCaGhe, gheTrong);
-            lblGiaVe.setText(service.layGiaVeTheoSuat(maSuat).toPlainString() + " đồng");
+            giaVeHienTai = service.layGiaVeTheoSuat(maSuat);
+            lblGiaVe.setText(giaVeHienTai.toPlainString() + " đồng/vé");
+            capNhatTongTienDuKien();
         } catch (SQLException ex) {
+            giaVeHienTai = BigDecimal.ZERO;
+            hienThiSoDoGhe(new ArrayList<String>(), new ArrayList<String>());
+            lblGiaVe.setText("Không tải được giá vé");
+            capNhatTongTienDuKien();
             baoLoi(ex);
         }
     }
 
-    private void taiDanhSachPhieu() {
+    private String layMaSuatChieuDangChon() {
+        Object dangChon = cboSuatChieu.getSelectedItem();
+        return dangChon == null ? null : layMaSuatChieu(dangChon.toString());
+    }
+
+    private String layMaSuatChieu(String moTaSuat) {
+        int viTriPhanCach = moTaSuat.indexOf(" | ");
+        return viTriPhanCach < 0 ? moTaSuat : moTaSuat.substring(0, viTriPhanCach).trim();
+    }
+
+    private void taiDanhSachPhieu(String tuKhoa) {
         try {
-            ArrayList<PhieuDatVe> danhSach = phieuDAO.layTatCa();
+            ArrayList<PhieuDatVe> danhSach = tuKhoa == null || tuKhoa.trim().isEmpty()
+                    ? phieuDAO.layTatCa() : phieuDAO.timKiem(tuKhoa);
             phieuModel.setRowCount(0);
             for (PhieuDatVe phieu : danhSach) {
                 String maKhachHang = phieu.getKhachHang() == null
@@ -581,6 +851,7 @@ public class PhieuDatVe_GUI extends JFrame {
                 phieuModel.addRow(new Object[] {phieu.getMaPhieuDatVe(),
                         phieu.getNgayDat(), maKhachHang, phieu.getTrangThai()});
             }
+            capNhatTrangThaiNutHuy();
         } catch (SQLException ex) {
             baoLoi(ex);
         }
@@ -603,9 +874,29 @@ public class PhieuDatVe_GUI extends JFrame {
         return maPhieuVuaTao;
     }
 
+    public KhachHang getKhachHangVuaTao() {
+        return khachHangVuaTao;
+    }
+
+    public String getMaSuatChieuVuaTao() {
+        return maSuatChieuVuaTao;
+    }
+
+    public List<String> getGheVuaTao() {
+        return new ArrayList<String>(gheVuaTao);
+    }
+
+    public BigDecimal getGiaVeVuaTao() {
+        return giaVeVuaTao;
+    }
+
     /** Trả mã combo và số lượng cho màn lập hóa đơn gọi tiếp. */
     public Map<String, Integer> getComboVuaChon() {
         return new LinkedHashMap<String, Integer>(comboVuaChon);
+    }
+
+    public Map<String, BigDecimal> getGiaComboVuaChon() {
+        return new LinkedHashMap<String, BigDecimal>(giaComboVuaChon);
     }
 
     private void baoLoi(Exception ex) {

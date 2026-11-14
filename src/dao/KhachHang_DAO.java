@@ -17,6 +17,23 @@ import connectDB.ConnectDB;
 import entity.KhachHang;
 
 public class KhachHang_DAO {
+	private final Connection connection;
+
+	public KhachHang_DAO() {
+		this.connection = null;
+	}
+
+	public KhachHang_DAO(Connection connection) {
+		this.connection = connection;
+	}
+
+	private Connection layKetNoi() {
+		if (connection != null) {
+			return connection;
+		}
+		ConnectDB.getInstance();
+		return ConnectDB.getConnection();
+	}
 
 	// Dựng đối tượng KhachHang_E từ dòng hiện tại của ResultSet
 	private KhachHang taoKhachHang(ResultSet rs) throws SQLException {
@@ -26,6 +43,38 @@ public class KhachHang_DAO {
 		String soDienThoai = rs.getString("soDienThoai");
 		int diemTichLuy = rs.getInt("diemTichLuy");
 		return new KhachHang(maKhachHang, tenKhachHang, email, soDienThoai, diemTichLuy);
+	}
+
+	/** Tìm khách theo mã, tên hoặc số điện thoại trong luồng tiếp nhận tại quầy. */
+	public ArrayList<KhachHang> timKhachHangChoTiepNhan(String tuKhoa) throws SQLException {
+		ArrayList<KhachHang> danhSach = new ArrayList<KhachHang>();
+		String sql = "SELECT maKhachHang, tenKhachHang, email, soDienThoai, diemTichLuy "
+				+ "FROM KhachHang WHERE maKhachHang LIKE ? OR tenKhachHang LIKE ? "
+				+ "OR soDienThoai LIKE ? ORDER BY tenKhachHang";
+		String mau = "%" + tuKhoa.trim() + "%";
+		try (PreparedStatement statement = layKetNoi().prepareStatement(sql)) {
+			statement.setString(1, mau);
+			statement.setString(2, mau);
+			statement.setString(3, mau);
+			try (ResultSet result = statement.executeQuery()) {
+				while (result.next()) {
+					danhSach.add(taoKhachHang(result));
+				}
+			}
+		}
+		return danhSach;
+	}
+
+	/** Đọc khách hàng theo mã để xác nhận phiếu không tham chiếu mã khách sai. */
+	public KhachHang layKhachHangChoTiepNhan(String maKhachHang) throws SQLException {
+		String sql = "SELECT maKhachHang, tenKhachHang, email, soDienThoai, diemTichLuy "
+				+ "FROM KhachHang WHERE maKhachHang = ?";
+		try (PreparedStatement statement = layKetNoi().prepareStatement(sql)) {
+			statement.setString(1, maKhachHang);
+			try (ResultSet result = statement.executeQuery()) {
+				return result.next() ? taoKhachHang(result) : null;
+			}
+		}
 	}
 
 	public ArrayList<KhachHang> getAllKhachHang() {

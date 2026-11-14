@@ -5,7 +5,10 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class ConnectDB {
-    private static final String URL ="jdbc:sqlserver://localhost:1433;databaseName=RapPhim_Member2_Test";
+    private static final String URL =
+            "jdbc:sqlserver://localhost:1433;"
+          + "databaseName=RapPhim_Member2_Test;"
+          + "encrypt=true;trustServerCertificate=true";
 
     private static final String USER = "sa";
     private static final String PASSWORD = "sapassword";

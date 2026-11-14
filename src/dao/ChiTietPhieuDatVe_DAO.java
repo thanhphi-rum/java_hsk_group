@@ -1,6 +1,7 @@
 package dao;
 
 import entity.ChiTietPhieuDatVe;
+import entity.GheSuatChieu;
 import entity.PhieuDatVe;
 import entity.Ve;
 
@@ -34,7 +35,8 @@ public class ChiTietPhieuDatVe_DAO {
     public ArrayList<ChiTietPhieuDatVe> layTheoPhieu(String maPhieuDatVe)
             throws SQLException {
         ArrayList<ChiTietPhieuDatVe> danhSach = new ArrayList<ChiTietPhieuDatVe>();
-        String sql = "SELECT ct.maPhieuDatVe, ct.maVe, ct.donGia, v.giaTien, v.trangThai "
+        String sql = "SELECT ct.maPhieuDatVe, ct.maVe, ct.donGia, v.giaTien, v.trangThai, "
+                + "v.maSuatChieu, v.maGhe "
                 + "FROM ChiTietPhieuDatVe ct JOIN Ve v ON v.maVe = ct.maVe "
                 + "WHERE ct.maPhieuDatVe = ? ORDER BY ct.maVe";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -48,6 +50,10 @@ public class ChiTietPhieuDatVe_DAO {
                     ve.setMaVe(result.getString("maVe"));
                     ve.setGiaTien(result.getBigDecimal("giaTien"));
                     ve.setTrangThai(result.getString("trangThai"));
+                    ve.setGheSuatChieu(new GheSuatChieu(
+                            result.getString("maSuatChieu"),
+                            result.getString("maGhe"),
+                            result.getString("trangThai")));
 
                     BigDecimal donGia = result.getBigDecimal("donGia");
                     danhSach.add(new ChiTietPhieuDatVe(phieu, ve, donGia));

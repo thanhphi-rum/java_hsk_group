@@ -57,6 +57,24 @@ public class PhieuDatVe_DAO {
         return danhSach;
     }
 
+    public ArrayList<PhieuDatVe> timKiem(String tuKhoa) throws SQLException {
+        ArrayList<PhieuDatVe> danhSach = new ArrayList<PhieuDatVe>();
+        String sql = "SELECT maPhieuDatVe, ngayDat, maKhachHang, trangThai "
+                + "FROM PhieuDatVe WHERE maPhieuDatVe LIKE ? OR maKhachHang LIKE ? "
+                + "ORDER BY ngayDat DESC";
+        String mau = "%" + tuKhoa.trim() + "%";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, mau);
+            statement.setString(2, mau);
+            try (ResultSet result = statement.executeQuery()) {
+                while (result.next()) {
+                    danhSach.add(taoPhieu(result));
+                }
+            }
+        }
+        return danhSach;
+    }
+
     public boolean capNhatTrangThai(String maPhieuDatVe, String trangThai) throws SQLException {
         String sql = "UPDATE PhieuDatVe SET trangThai = ? WHERE maPhieuDatVe = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {

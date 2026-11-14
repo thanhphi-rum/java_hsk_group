@@ -1,12 +1,14 @@
 package dao;
 
 import entity.Ve;
+import entity.GheSuatChieu;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 
 /** Truy vấn vé, suất chiếu và ghế còn trống. */
@@ -19,13 +21,18 @@ public class Ve_DAO {
 
     public ArrayList<String> laySuatChieuDangMoBan() throws SQLException {
         ArrayList<String> danhSach = new ArrayList<String>();
-        String sql = "SELECT maSuatChieu FROM SuatChieu "
-                + "WHERE gioBatDau > GETDATE() AND trangThai = N'Đang Mở Bán' "
-                + "ORDER BY gioBatDau";
+        String sql = "SELECT sc.maSuatChieu, p.tenPhim, sc.gioBatDau, sc.giaVe "
+                + "FROM SuatChieu sc JOIN Phim p ON p.maPhim = sc.maPhim "
+                + "WHERE sc.gioBatDau > GETDATE() AND sc.trangThai = N'Đang Mở Bán' "
+                + "ORDER BY sc.gioBatDau";
         try (PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet result = statement.executeQuery()) {
             while (result.next()) {
-                danhSach.add(result.getString("maSuatChieu"));
+                String gioChieu = result.getTimestamp("gioBatDau").toLocalDateTime()
+                        .format(DateTimeFormatter.ofPattern("dd/MM HH:mm"));
+                danhSach.add(result.getString("maSuatChieu") + " | "
+                        + result.getString("tenPhim") + " | " + gioChieu + " | "
+                        + result.getBigDecimal("giaVe").toPlainString() + " đồng/vé");
             }
         }
         return danhSach;
@@ -140,7 +147,7 @@ public class Ve_DAO {
 
     public ArrayList<Ve> layVeTheoPhieu(String maPhieuDatVe) throws SQLException {
         ArrayList<Ve> danhSach = new ArrayList<Ve>();
-        String sql = "SELECT v.maVe, v.giaTien, v.trangThai "
+        String sql = "SELECT v.maVe, v.maSuatChieu, v.maGhe, v.giaTien, v.trangThai "
                 + "FROM Ve v JOIN ChiTietPhieuDatVe ct ON ct.maVe = v.maVe "
                 + "WHERE ct.maPhieuDatVe = ? ORDER BY v.maVe";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -151,6 +158,10 @@ public class Ve_DAO {
                     ve.setMaVe(result.getString("maVe"));
                     ve.setGiaTien(result.getBigDecimal("giaTien"));
                     ve.setTrangThai(result.getString("trangThai"));
+                    ve.setGheSuatChieu(new GheSuatChieu(
+                            result.getString("maSuatChieu"),
+                            result.getString("maGhe"),
+                            result.getString("trangThai")));
                     danhSach.add(ve);
                 }
             }

@@ -1,6 +1,7 @@
 package service;
 
 import dao.ChiTietPhieuDatVe_DAO;
+import dao.KhachHang_DAO;
 import dao.PhieuDatVe_DAO;
 import dao.Ve_DAO;
 import entity.KhachHang;
@@ -19,12 +20,15 @@ import java.util.UUID;
 /** Điều phối lập/hủy phiếu cùng vé và chi tiết trong một transaction. */
 public class TaoPhieuDatVeService {
     private final Connection connection;
+    private final KhachHang_DAO khachHangDAO;
     private final PhieuDatVe_DAO phieuDAO;
     private final Ve_DAO veDAO;
     private final ChiTietPhieuDatVe_DAO chiTietDAO;
+    private BigDecimal giaVePhieuVuaTao = BigDecimal.ZERO;
 
     public TaoPhieuDatVeService(Connection connection) {
         this.connection = connection;
+        this.khachHangDAO = new KhachHang_DAO(connection);
         this.phieuDAO = new PhieuDatVe_DAO(connection);
         this.veDAO = new Ve_DAO(connection);
         this.chiTietDAO = new ChiTietPhieuDatVe_DAO(connection);
@@ -50,8 +54,10 @@ public class TaoPhieuDatVeService {
         kiemTra(maKhachHang, maSuatChieu, danhSachMaGhe);
 
         String maPhieu = taoMa("PD");
-        KhachHang khachHang = new KhachHang();
-        khachHang.setMaKhachHang(maKhachHang);
+        KhachHang khachHang = khachHangDAO.layKhachHangChoTiepNhan(maKhachHang);
+        if (khachHang == null) {
+            throw new SQLException("Không tìm thấy khách hàng " + maKhachHang + ". Hãy tìm khách trước khi tạo phiếu.");
+        }
         PhieuDatVe phieu = new PhieuDatVe(
                 maPhieu, LocalDateTime.now(), khachHang, "Chờ thanh toán");
 
@@ -81,6 +87,7 @@ public class TaoPhieuDatVeService {
                 chiTietDAO.themChiTiet(maPhieu, maVe, donGia);
             }
             connection.commit();
+            giaVePhieuVuaTao = donGia;
             return maPhieu;
         } catch (SQLException | RuntimeException ex) {
             connection.rollback();
@@ -88,6 +95,10 @@ public class TaoPhieuDatVeService {
         } finally {
             connection.setAutoCommit(autoCommitCu);
         }
+    }
+
+    public BigDecimal getGiaVePhieuVuaTao() {
+        return giaVePhieuVuaTao;
     }
 
     public void huyPhieu(String maPhieuDatVe) throws SQLException {
