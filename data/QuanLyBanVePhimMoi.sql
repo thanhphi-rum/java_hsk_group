@@ -1,4 +1,20 @@
-﻿:ON ERROR EXIT
+﻿/*
+RẠP CHIẾU PHIM — MỘT FILE SQL DUY NHẤT
+Cách chạy: mở file này trong SSMS, kết nối SQL Server, nhấn Ctrl+A rồi F5.
+Không cần bật SQLCMD Mode, không cần chạy thêm file nào khác.
+- Database chưa có hoặc đang trống: tạo đủ bảng, dữ liệu mẫu, thể loại, khuyến mãi và view.
+- Database từ hai bản code đã có: tự nâng cấp, giữ dữ liệu giao dịch và tài khoản hiện có.
+- Chạy lại file không thêm trùng dữ liệu mẫu và không đặt lại mật khẩu.
+*/
+USE master;
+GO
+IF DB_ID(N'QuanLyBanVePhimMoi') IS NULL
+    EXEC(N'CREATE DATABASE [QuanLyBanVePhimMoi]');
+GO
+USE [QuanLyBanVePhimMoi];
+GO
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_PADDING ON;
@@ -6,28 +22,16 @@ SET ANSI_WARNINGS ON;
 SET CONCAT_NULL_YIELDS_NULL ON;
 SET ARITHABORT ON;
 SET NUMERIC_ROUNDABORT OFF;
-GO
-/* =====================================================================
-   QUAN LY RAP PHIM  -  SQL Server (T-SQL)
-   Thiet ke theo so do lop QL_RapPhim.
-   Chay toan bo file 1 lan tren SQL Server Management Studio.
-   Chi tao database moi. Neu da co du lieu: dung migration_merged.sql.
-   ===================================================================== */
 
-USE master;
-GO
-
-IF DB_ID(N'QuanLyBanVePhimMoi') IS NOT NULL
-    THROW 50001, N'Database da ton tai. Hay dung migration_merged.sql hoac install-db.ps1 -Upgrade.', 1;
-GO
-
-IF DB_ID(N'QuanLyBanVePhimMoi') IS NULL
-    CREATE DATABASE QuanLyBanVePhimMoi;
-GO
-
-USE QuanLyBanVePhimMoi;
-GO
-
+BEGIN TRY
+    IF DB_NAME() <> N'QuanLyBanVePhimMoi'
+        THROW 50001, N'Chưa chuyển được tới database QuanLyBanVePhimMoi.', 1;
+    BEGIN TRANSACTION;
+    DECLARE @KhoiTao BIT = CASE WHEN NOT EXISTS(SELECT 1 FROM sys.tables WHERE is_ms_shipped=0) THEN 1 ELSE 0 END;
+    IF @KhoiTao = 1
+    BEGIN
+        -- 1. Cấu trúc và dữ liệu mẫu chỉ được tạo khi database trống.
+        EXEC sys.sp_executesql N'
 /* =====================================================================
    1. TAO BANG
    ===================================================================== */
@@ -41,24 +45,24 @@ CREATE TABLE NhanVien (
     GioiTinh    NVARCHAR(10)  NOT NULL,
     NgaySinh    DATE          NOT NULL,
     DiaChi      NVARCHAR(200) NOT NULL,
-    ChucVu      NVARCHAR(50)  NOT NULL DEFAULT N'Nhân Viên',   -- 'Quản Lý' hoặc 'Nhân Viên'
-    TrangThai   NVARCHAR(20)  NOT NULL DEFAULT N'Đang làm',
+    ChucVu      NVARCHAR(50)  NOT NULL DEFAULT N''Nhân Viên'',   -- ''Quản Lý'' hoặc ''Nhân Viên''
+    TrangThai   NVARCHAR(20)  NOT NULL DEFAULT N''Đang làm'',
     CONSTRAINT PK_NhanVien PRIMARY KEY (MaNhanVien)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- TaiKhoan(tenDangNhap, matKhau, trangThai, maNhanVien)   NhanVien 1 --- 0..1 TaiKhoan
 CREATE TABLE TaiKhoan (
     TenDangNhap VARCHAR(50)  NOT NULL,
     MatKhau     VARCHAR(255) NOT NULL,   -- SHA-256 dạng hex (ứng dụng tự băm khi tạo/đổi mật khẩu)
-    TrangThai   NVARCHAR(50) NOT NULL DEFAULT N'Hoạt động',   -- 'Hoạt động' hoặc 'Khóa'
+    TrangThai   NVARCHAR(50) NOT NULL DEFAULT N''Hoạt động'',   -- ''Hoạt động'' hoặc ''Khóa''
     MaNhanVien  VARCHAR(20)  NOT NULL,
     CONSTRAINT PK_TaiKhoan PRIMARY KEY (TenDangNhap),
     CONSTRAINT FK_TaiKhoan_NhanVien FOREIGN KEY (MaNhanVien) REFERENCES NhanVien(MaNhanVien),
     CONSTRAINT UQ_TaiKhoan_NhanVien UNIQUE (MaNhanVien)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- KhachHang(maKhachHang, tenKhachHang, email, soDienThoai, diemTichLuy)
 CREATE TABLE KhachHang (
     MaKhachHang  VARCHAR(20)   NOT NULL,
@@ -69,8 +73,8 @@ CREATE TABLE KhachHang (
     CONSTRAINT PK_KhachHang PRIMARY KEY (MaKhachHang),
     CONSTRAINT CK_KhachHang_Diem CHECK (DiemTichLuy >= 0)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- KhuyenMai(maKhuyenMai, tenKhuyenMai, phanTramGiam, ngayBatDau, ngayKetThuc, moTa)
 CREATE TABLE KhuyenMai (
     MaKhuyenMai  VARCHAR(20)   NOT NULL,
@@ -79,28 +83,28 @@ CREATE TABLE KhuyenMai (
     NgayBatDau   DATE          NOT NULL,
     NgayKetThuc  DATE          NOT NULL,
     MoTa         NVARCHAR(200) NULL,
-    TrangThai    NVARCHAR(20)  NOT NULL DEFAULT N'Hoạt động',
-    HinhThuc     NVARCHAR(30)  NOT NULL DEFAULT N'Giảm hóa đơn',  -- Giảm giá vé | Giảm giá combo | Giảm hóa đơn | Tặng combo
-    SoComboTang  INT           NOT NULL DEFAULT 0,                -- chỉ dùng cho hình thức 'Tặng combo'
+    TrangThai    NVARCHAR(20)  NOT NULL DEFAULT N''Hoạt động'',
+    HinhThuc     NVARCHAR(30)  NOT NULL DEFAULT N''Giảm hóa đơn'',  -- Giảm giá vé | Giảm giá combo | Giảm hóa đơn | Tặng combo
+    SoComboTang  INT           NOT NULL DEFAULT 0,                -- chỉ dùng cho hình thức ''Tặng combo''
     CONSTRAINT PK_KhuyenMai PRIMARY KEY (MaKhuyenMai),
-    CONSTRAINT CK_KhuyenMai_HinhThuc CHECK (HinhThuc IN (N'Giảm giá vé', N'Giảm giá combo', N'Giảm hóa đơn', N'Tặng combo')),
+    CONSTRAINT CK_KhuyenMai_HinhThuc CHECK (HinhThuc IN (N''Giảm giá vé'', N''Giảm giá combo'', N''Giảm hóa đơn'', N''Tặng combo'')),
     CONSTRAINT CK_KhuyenMai_PhanTram CHECK (PhanTramGiam >= 0 AND PhanTramGiam <= 100),
     CONSTRAINT CK_KhuyenMai_Ngay CHECK (NgayKetThuc >= NgayBatDau)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- ComboBapNuoc(maCombo, tenCombo, giaBan, moTa, trangThai)
 CREATE TABLE ComboBapNuoc (
     MaCombo   VARCHAR(20)    NOT NULL,
     TenCombo  NVARCHAR(100)  NOT NULL,
     GiaBan    DECIMAL(18,2)  NOT NULL,
     MoTa      NVARCHAR(200)  NULL,
-    TrangThai NVARCHAR(50)   NOT NULL DEFAULT N'Đang bán',   -- 'Đang bán' hoặc 'Ngừng bán'
+    TrangThai NVARCHAR(50)   NOT NULL DEFAULT N''Đang bán'',   -- ''Đang bán'' hoặc ''Ngừng bán''
     CONSTRAINT PK_ComboBapNuoc PRIMARY KEY (MaCombo),
     CONSTRAINT CK_Combo_GiaBan CHECK (GiaBan >= 0)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- TheLoai(maTheLoai, tenTheLoai, moTa)
 CREATE TABLE TheLoai (
     MaTheLoai  VARCHAR(20)   NOT NULL,
@@ -109,10 +113,10 @@ CREATE TABLE TheLoai (
     CONSTRAINT PK_TheLoai PRIMARY KEY (MaTheLoai),
     CONSTRAINT UQ_TheLoai_Ten UNIQUE (TenTheLoai)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- Phim(maPhim, tenPhim, thoiLuong, trangThai, moTa, daoDien, dienVien, gioiHanTuoi, ngayKhoiChieu)
--- Trạng thái: 'Sắp Chiếu', 'Đang Chiếu', 'Ngừng Chiếu'.   Thể loại lưu ở bảng Phim_TheLoai (Phim *---* TheLoai)
+-- Trạng thái: ''Sắp Chiếu'', ''Đang Chiếu'', ''Ngừng Chiếu''.   Thể loại lưu ở bảng Phim_TheLoai (Phim *---* TheLoai)
 CREATE TABLE Phim (
     MaPhim        VARCHAR(20)   NOT NULL,
     TenPhim       NVARCHAR(200) NOT NULL,
@@ -126,8 +130,8 @@ CREATE TABLE Phim (
     CONSTRAINT PK_Phim PRIMARY KEY (MaPhim),
     CONSTRAINT CK_Phim_ThoiLuong CHECK (ThoiLuong > 0)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- Phim_TheLoai(maPhim, maTheLoai): một phim có thể thuộc nhiều thể loại, một thể loại có nhiều phim.
 -- Xóa phim thì tự xóa các dòng thể loại của phim đó.
 CREATE TABLE Phim_TheLoai (
@@ -137,33 +141,33 @@ CREATE TABLE Phim_TheLoai (
     CONSTRAINT FK_PhimTheLoai_Phim FOREIGN KEY (MaPhim) REFERENCES Phim(MaPhim) ON DELETE CASCADE,
     CONSTRAINT FK_PhimTheLoai_TheLoai FOREIGN KEY (MaTheLoai) REFERENCES TheLoai(MaTheLoai)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- PhongChieu(maPhongChieu, tenPhongChieu, loaiPhongChieu, trangThai, sucChua)
 CREATE TABLE PhongChieu (
     MaPhongChieu   VARCHAR(20)   NOT NULL,
     TenPhongChieu  NVARCHAR(100) NOT NULL,
     LoaiPhongChieu NVARCHAR(50)  NOT NULL,
-    TrangThai      NVARCHAR(50)  NOT NULL DEFAULT N'Hoạt động',
+    TrangThai      NVARCHAR(50)  NOT NULL DEFAULT N''Hoạt động'',
     SucChua        INT           NOT NULL,
     CONSTRAINT PK_PhongChieu PRIMARY KEY (MaPhongChieu),
     CONSTRAINT CK_PhongChieu_SucChua CHECK (SucChua > 0)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- Ghe(maGhe, viTri, maPhongChieu, loaiGhe)   PhongChieu 1 <>--- 1..* Ghe
 -- MaGhe duy nhất toàn hệ thống vì Ghe_SuatChieu join theo MaGhe
 CREATE TABLE Ghe (
     MaGhe        VARCHAR(20)  NOT NULL,
     ViTri        NVARCHAR(10) NOT NULL,
     MaPhongChieu VARCHAR(20)  NOT NULL,
-    LoaiGhe      NVARCHAR(50) NOT NULL DEFAULT N'Thường',
+    LoaiGhe      NVARCHAR(50) NOT NULL DEFAULT N''Thường'',
     CONSTRAINT PK_Ghe PRIMARY KEY (MaGhe),
     CONSTRAINT FK_Ghe_PhongChieu FOREIGN KEY (MaPhongChieu) REFERENCES PhongChieu(MaPhongChieu),
     CONSTRAINT UQ_Ghe_Phong_ViTri UNIQUE (MaPhongChieu, ViTri)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- SuatChieu(maSuatChieu, maPhim, maPhongChieu, gioBatDau, gioKetThuc, giaVe, trangThai)
 -- NgayChieu là cột tính toán (diagram có ngayChieu trong hàm khởi tạo), tự lấy từ GioBatDau.
 CREATE TABLE SuatChieu (
@@ -173,7 +177,7 @@ CREATE TABLE SuatChieu (
     GioBatDau    DATETIME      NOT NULL,
     GioKetThuc   DATETIME      NOT NULL,
     GiaVe        DECIMAL(18,2) NOT NULL DEFAULT 100000,
-    TrangThai    NVARCHAR(50)  NOT NULL DEFAULT N'Đang Mở Bán',
+    TrangThai    NVARCHAR(50)  NOT NULL DEFAULT N''Đang Mở Bán'',
     NgayChieu    AS CAST(GioBatDau AS DATE) PERSISTED,
     CONSTRAINT PK_SuatChieu PRIMARY KEY (MaSuatChieu),
     CONSTRAINT FK_SuatChieu_Phim FOREIGN KEY (MaPhim) REFERENCES Phim(MaPhim),
@@ -181,53 +185,55 @@ CREATE TABLE SuatChieu (
     CONSTRAINT CK_SuatChieu_Gio CHECK (GioKetThuc > GioBatDau),
     CONSTRAINT CK_SuatChieu_GiaVe CHECK (GiaVe >= 0)
 );
-GO
+';
+        EXEC sys.sp_executesql N'
 CREATE INDEX IX_SuatChieu_MaPhim ON SuatChieu(MaPhim);
 CREATE INDEX IX_SuatChieu_Phong_Gio ON SuatChieu(MaPhongChieu, GioBatDau);
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- GheSuatChieu(maGhe, maSuatChieu, trangThai)  -> bảng Ghe_SuatChieu
--- Trạng thái: 'Trống', 'Đã đặt'. Không có ON DELETE CASCADE: SuatChieuDAO tự xóa bảng này trước.
+-- Trạng thái: ''Trống'', ''Đã đặt''. Không có ON DELETE CASCADE: SuatChieuDAO tự xóa bảng này trước.
 CREATE TABLE Ghe_SuatChieu (
     MaSuatChieu VARCHAR(20)  NOT NULL,
     MaGhe       VARCHAR(20)  NOT NULL,
-    TrangThai   NVARCHAR(20) NOT NULL DEFAULT N'Trống',
+    TrangThai   NVARCHAR(20) NOT NULL DEFAULT N''Trống'',
     CONSTRAINT PK_Ghe_SuatChieu PRIMARY KEY (MaSuatChieu, MaGhe),
     CONSTRAINT FK_GSC_SuatChieu FOREIGN KEY (MaSuatChieu) REFERENCES SuatChieu(MaSuatChieu),
     CONSTRAINT FK_GSC_Ghe FOREIGN KEY (MaGhe) REFERENCES Ghe(MaGhe)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- Ve(maVe, maGheSuatChieu, giaTien, trangThai)
 -- maGheSuatChieu = khóa ghép (MaSuatChieu, MaGhe) -> Ghe_SuatChieu.
 -- UNIQUE (MaSuatChieu, MaGhe): mỗi ghế trong 1 suất chỉ có tối đa 1 vé (chặn bán trùng).
--- Trạng thái vé: 'Đã đặt' (giữ chỗ qua phiếu đặt vé), 'Đã bán' (đã lập hóa đơn), 'Đã hủy'.
+-- Trạng thái vé: ''Đã đặt'' (giữ chỗ qua phiếu đặt vé), ''Đã bán'' (đã lập hóa đơn), ''Đã hủy''.
 CREATE TABLE Ve (
     MaVe        VARCHAR(20)   NOT NULL,
     MaSuatChieu VARCHAR(20)   NOT NULL,
     MaGhe       VARCHAR(20)   NOT NULL,
     GiaTien     DECIMAL(18,2) NOT NULL,
-    TrangThai   NVARCHAR(50)  NOT NULL DEFAULT N'Đã bán',
+    TrangThai   NVARCHAR(50)  NOT NULL DEFAULT N''Đã bán'',
     CONSTRAINT PK_Ve PRIMARY KEY (MaVe),
     CONSTRAINT FK_Ve_GheSuatChieu FOREIGN KEY (MaSuatChieu, MaGhe) REFERENCES Ghe_SuatChieu(MaSuatChieu, MaGhe),
     CONSTRAINT CK_Ve_GiaTien CHECK (GiaTien >= 0)
 );
-GO
-CREATE UNIQUE INDEX UX_Ve_Suat_Ghe ON Ve(MaSuatChieu,MaGhe) WHERE TrangThai <> N'Đã hủy';
-GO
-
+';
+        EXEC sys.sp_executesql N'
+CREATE UNIQUE INDEX UX_Ve_Suat_Ghe ON Ve(MaSuatChieu,MaGhe) WHERE TrangThai <> N''Đã hủy'';
+';
+        EXEC sys.sp_executesql N'
 -- PhieuDatVe(maPhieuDatVe, ngayDat, maKhachHang, trangThai)   KhachHang 0..1 --- 0..* PhieuDatVe
--- Trạng thái: 'Chờ xác nhận', 'Đã xác nhận', 'Đã hủy'.
+-- Trạng thái: ''Chờ xác nhận'', ''Đã xác nhận'', ''Đã hủy''.
 CREATE TABLE PhieuDatVe (
     MaPhieuDatVe VARCHAR(20)  NOT NULL,
     NgayDat      DATE         NOT NULL DEFAULT CAST(GETDATE() AS DATE),
     MaKhachHang  VARCHAR(20)  NULL,
-    TrangThai    NVARCHAR(50) NOT NULL DEFAULT N'Chờ xác nhận',
+    TrangThai    NVARCHAR(50) NOT NULL DEFAULT N''Chờ xác nhận'',
     CONSTRAINT PK_PhieuDatVe PRIMARY KEY (MaPhieuDatVe),
     CONSTRAINT FK_PhieuDatVe_KhachHang FOREIGN KEY (MaKhachHang) REFERENCES KhachHang(MaKhachHang)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- ChiTietPhieuDatVe(maPhieuDatVe, maVe, donGia)   PhieuDatVe 1 <>--- 1..* ChiTietPhieuDatVe
 -- Mỗi vé nằm trong tối đa 1 phiếu đặt (PK ghép + UNIQUE MaVe).
 CREATE TABLE ChiTietPhieuDatVe (
@@ -240,8 +246,8 @@ CREATE TABLE ChiTietPhieuDatVe (
     CONSTRAINT UQ_CTPDV_Ve UNIQUE (MaVe),
     CONSTRAINT CK_CTPDV_DonGia CHECK (DonGia >= 0)
 );
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- HoaDon(maHoaDon, ngayLap, maNhanVien, maKhachHang, maKhuyenMai, phuongThucThanhToan, maPhieuDatVe)
 -- Không có cột TongTien: tổng tiền = tinhTongTien() tính từ ChiTietHoaDon (xem view vw_HoaDon_TongTien).
 -- MaKhachHang (khách vãng lai), MaKhuyenMai, MaPhieuDatVe cho phép NULL.
@@ -252,9 +258,9 @@ CREATE TABLE HoaDon (
     MaNhanVien          VARCHAR(20)  NOT NULL,
     MaKhachHang         VARCHAR(20)  NULL,
     MaKhuyenMai         VARCHAR(20)  NULL,
-    PhuongThucThanhToan NVARCHAR(50) NOT NULL DEFAULT N'Tiền mặt',
+    PhuongThucThanhToan NVARCHAR(50) NOT NULL DEFAULT N''Tiền mặt'',
     MaPhieuDatVe        VARCHAR(20)  NULL,
-    TrangThai           NVARCHAR(30) NOT NULL DEFAULT N'Đã thanh toán',
+    TrangThai           NVARCHAR(30) NOT NULL DEFAULT N''Đã thanh toán'',
     GhiChuHuy           NVARCHAR(300) NULL,
     CONSTRAINT PK_HoaDon PRIMARY KEY (MaHoaDon),
     CONSTRAINT FK_HoaDon_NhanVien FOREIGN KEY (MaNhanVien) REFERENCES NhanVien(MaNhanVien),
@@ -262,13 +268,14 @@ CREATE TABLE HoaDon (
     CONSTRAINT FK_HoaDon_KhuyenMai FOREIGN KEY (MaKhuyenMai) REFERENCES KhuyenMai(MaKhuyenMai),
     CONSTRAINT FK_HoaDon_PhieuDatVe FOREIGN KEY (MaPhieuDatVe) REFERENCES PhieuDatVe(MaPhieuDatVe)
 );
-GO
+';
+        EXEC sys.sp_executesql N'
 CREATE INDEX IX_HoaDon_KhachHang ON HoaDon(MaKhachHang);
 CREATE INDEX IX_HoaDon_NgayLap ON HoaDon(NgayLap);
 -- 1 phiếu đặt vé chỉ chuyển thành tối đa 1 hóa đơn
 CREATE UNIQUE INDEX UX_HoaDon_PhieuDatVe ON HoaDon(MaPhieuDatVe) WHERE MaPhieuDatVe IS NOT NULL;
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- ChiTietHoaDon(maHoaDon, maVe, maCombo, soLuong, donGia)   HoaDon 1 <>--- 1..* ChiTietHoaDon
 -- Mỗi dòng là 1 vé (MaVe, số lượng 1) HOẶC 1 combo bắp nước (MaCombo, số lượng n), không được cả hai.
 -- Diagram không có mã riêng cho dòng chi tiết nên dùng khóa thay thế MaChiTietHoaDon (tự tăng).
@@ -288,283 +295,228 @@ CREATE TABLE ChiTietHoaDon (
         OR (MaVe IS NULL AND MaCombo IS NOT NULL AND SoLuong > 0)),
     CONSTRAINT CK_CTHD_DonGia CHECK (DonGia >= 0)
 );
-GO
+';
+        EXEC sys.sp_executesql N'
 -- Mỗi vé chỉ nằm trong 1 dòng hóa đơn; mỗi combo chỉ xuất hiện 1 dòng trong cùng hóa đơn
 CREATE UNIQUE INDEX UX_CTHD_Ve ON ChiTietHoaDon(MaVe) WHERE MaVe IS NOT NULL;
 CREATE UNIQUE INDEX UX_CTHD_HoaDon_Combo ON ChiTietHoaDon(MaHoaDon, MaCombo) WHERE MaCombo IS NOT NULL;
 CREATE INDEX IX_CTHD_HoaDon ON ChiTietHoaDon(MaHoaDon);
-GO
-
-/* =====================================================================
-   2. VIEW TINH TONG TIEN (tuong ung tinhTongTien / tinhTongTienDat trong so do)
-   ===================================================================== */
-
--- HoaDon.tinhTongTien(): tổng thành tiền các dòng chi tiết, trừ phần trăm khuyến mãi (nếu có)
-CREATE VIEW vw_HoaDon_TongTien AS
-SELECT h.MaHoaDon,
-       h.NgayLap,
-       h.MaNhanVien,
-       h.MaKhachHang,
-       h.MaKhuyenMai,
-       h.PhuongThucThanhToan,
-       h.MaPhieuDatVe,
-       h.TrangThai,
-       ISNULL(SUM(ct.SoLuong * ct.DonGia), 0)                                   AS TongTienGoc,
-       CAST(ISNULL(SUM(ct.SoLuong * ct.DonGia), 0) - (
-            CASE km.HinhThuc
-                WHEN N'Giảm giá vé'    THEN ISNULL(SUM(CASE WHEN ct.MaVe IS NOT NULL THEN ct.SoLuong * ct.DonGia END), 0) * (km.PhanTramGiam / 100.0)
-                WHEN N'Giảm giá combo' THEN ISNULL(SUM(CASE WHEN ct.MaCombo IS NOT NULL THEN ct.SoLuong * ct.DonGia END), 0) * (km.PhanTramGiam / 100.0)
-                WHEN N'Giảm hóa đơn'   THEN ISNULL(SUM(ct.SoLuong * ct.DonGia), 0) * (km.PhanTramGiam / 100.0)
-                WHEN N'Tặng combo'     THEN ISNULL(MIN(CASE WHEN ct.MaCombo IS NOT NULL THEN ct.DonGia END), 0)
-                                            * (CASE WHEN ISNULL(SUM(CASE WHEN ct.MaCombo IS NOT NULL THEN ct.SoLuong END), 0) < km.SoComboTang
-                                                    THEN ISNULL(SUM(CASE WHEN ct.MaCombo IS NOT NULL THEN ct.SoLuong END), 0)
-                                                    ELSE km.SoComboTang END)
-                ELSE 0
-            END) AS DECIMAL(18,2))                                              AS TongTien
-FROM HoaDon h
-LEFT JOIN ChiTietHoaDon ct ON ct.MaHoaDon = h.MaHoaDon
-LEFT JOIN KhuyenMai km     ON km.MaKhuyenMai = h.MaKhuyenMai
-GROUP BY h.MaHoaDon, h.NgayLap, h.MaNhanVien, h.MaKhachHang, h.MaKhuyenMai,
-         h.PhuongThucThanhToan, h.MaPhieuDatVe, h.TrangThai,
-         km.HinhThuc, km.PhanTramGiam, km.SoComboTang;
-GO
-
--- PhieuDatVe.tinhTongTienDat(): tổng đơn giá các vé trong phiếu
-CREATE VIEW vw_PhieuDatVe_TongTien AS
-SELECT p.MaPhieuDatVe,
-       p.NgayDat,
-       p.MaKhachHang,
-       p.TrangThai,
-       ISNULL(SUM(ct.DonGia), 0) AS TongTienDat
-FROM PhieuDatVe p
-LEFT JOIN ChiTietPhieuDatVe ct ON ct.MaPhieuDatVe = p.MaPhieuDatVe
-GROUP BY p.MaPhieuDatVe, p.NgayDat, p.MaKhachHang, p.TrangThai;
-GO
-
+';
+        EXEC sys.sp_executesql N'
 /* =====================================================================
    3. DU LIEU MAU
    ===================================================================== */
 
 -- Nhân viên
 INSERT INTO NhanVien (MaNhanVien, TenNhanVien, SoDienThoai, Email, GioiTinh, NgaySinh, DiaChi, ChucVu) VALUES
-('NV01', N'Nguyễn Văn An', '0901234567', 'an.nguyen@rapphim.com', N'Nam', '1995-05-20', N'12 Nguyễn Huệ Quận 1',   N'Quản Lý'),
-('NV02', N'Trần Thị Bình', '0912345678', 'binh.tran@rapphim.com', N'Nữ',  '1998-09-12', N'45 Lê Lợi Quận 1',       N'Nhân Viên'),
-('NV03', N'Lê Minh Châu',  '0923456789', 'chau.le@rapphim.com',   N'Nữ',  '2000-01-30', N'78 Hai Bà Trưng Quận 3', N'Nhân Viên');
-GO
-
+(''NV01'', N''Nguyễn Văn An'', ''0901234567'', ''an.nguyen@rapphim.com'', N''Nam'', ''1995-05-20'', N''12 Nguyễn Huệ Quận 1'',   N''Quản Lý''),
+(''NV02'', N''Trần Thị Bình'', ''0912345678'', ''binh.tran@rapphim.com'', N''Nữ'',  ''1998-09-12'', N''45 Lê Lợi Quận 1'',       N''Nhân Viên''),
+(''NV03'', N''Lê Minh Châu'',  ''0923456789'', ''chau.le@rapphim.com'',   N''Nữ'',  ''2000-01-30'', N''78 Hai Bà Trưng Quận 3'', N''Nhân Viên'');
+';
+        EXEC sys.sp_executesql N'
 -- Tài khoản mẫu: admin / admin123 (Quản Lý), nv02 / 123456 (Nhân Viên). Hãy đổi mật khẩu sau khi đăng nhập.
 -- Mật khẩu được băm SHA-256 ngay trong SQL, khớp với cách ứng dụng Java kiểm tra đăng nhập.
 INSERT INTO TaiKhoan (TenDangNhap, MatKhau, TrangThai, MaNhanVien) VALUES
-('admin', CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', 'admin123'), 2), N'Hoạt động', 'NV01'),
-('nv02',  CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', '123456'),   2), N'Hoạt động', 'NV02');
-GO
-
+(''admin'', CONVERT(VARCHAR(64), HASHBYTES(''SHA2_256'', ''admin123''), 2), N''Hoạt động'', ''NV01''),
+(''nv02'',  CONVERT(VARCHAR(64), HASHBYTES(''SHA2_256'', ''123456''),   2), N''Hoạt động'', ''NV02'');
+';
+        EXEC sys.sp_executesql N'
 -- Khách hàng
 INSERT INTO KhachHang (MaKhachHang, TenKhachHang, Email, SoDienThoai, DiemTichLuy) VALUES
-('KH01', N'Phạm Quốc Dũng',  'dung.pham@gmail.com', '0934567890', 120),
-('KH02', N'Võ Thị Em',       'em.vo@gmail.com',     '0945678901',  40),
-('KH03', N'Đặng Hoàng Phúc', 'phuc.dang@gmail.com', '0956789012',   0);
-GO
-
+(''KH01'', N''Phạm Quốc Dũng'',  ''dung.pham@gmail.com'', ''0934567890'', 120),
+(''KH02'', N''Võ Thị Em'',       ''em.vo@gmail.com'',     ''0945678901'',  40),
+(''KH03'', N''Đặng Hoàng Phúc'', ''phuc.dang@gmail.com'', ''0956789012'',   0);
+';
+        EXEC sys.sp_executesql N'
 -- Khuyến mãi
 INSERT INTO KhuyenMai (MaKhuyenMai, TenKhuyenMai, HinhThuc, PhanTramGiam, SoComboTang, NgayBatDau, NgayKetThuc, MoTa) VALUES
-('KM001', N'Happy Day – Thứ 4 vui vẻ', N'Giảm giá vé',    20, 0, '2026-01-01', '2026-12-31', N'Giảm 20% giá vé (khuyến mãi thứ 4 hằng tuần)'),
-('KM002', N'Sinh nhật thành viên',     N'Tặng combo',      0, 1, '2026-01-01', '2026-12-31', N'Tặng 1 combo (combo rẻ nhất trong đơn) cho khách thành viên đúng dịp sinh nhật'),
-('KM003', N'Movie Lover',              N'Giảm giá vé',    15, 0, '2026-01-01', '2026-12-31', N'Giảm 15% giá vé cho người mê phim'),
-('KM004', N'Couple Day',               N'Giảm hóa đơn',   20, 0, '2026-01-01', '2026-12-31', N'Giảm 20% tổng hóa đơn cho cặp đôi'),
-('KM005', N'Family Movie',             N'Giảm hóa đơn',   15, 0, '2026-01-01', '2026-12-31', N'Giảm 15% tổng hóa đơn cho gia đình'),
-('KM006', N'Student Discount',         N'Giảm giá vé',    20, 0, '2026-01-01', '2026-12-31', N'Giảm 20% giá vé cho học sinh, sinh viên'),
-('KM007', N'Super Combo',              N'Giảm giá combo', 10, 0, '2026-01-01', '2026-12-31', N'Giảm 10% giá combo bắp nước'),
-('KM008', N'Weekend Deal',             N'Giảm giá vé',    10, 0, '2026-01-01', '2026-12-31', N'Giảm 10% giá vé cuối tuần'),
-('KM009', N'Member Special',           N'Giảm hóa đơn',   10, 0, '2026-01-01', '2026-12-31', N'Giảm 10% tổng hóa đơn cho thành viên'),
-('KM010', N'Mừng phim bom tấn',        N'Giảm giá combo', 25, 0, '2026-01-01', '2026-12-31', N'Giảm 25% giá combo khi xem phim bom tấn');
-GO
-
+(''KM001'', N''Happy Day – Thứ 4 vui vẻ'', N''Giảm giá vé'',    20, 0, ''2026-01-01'', ''2026-12-31'', N''Giảm 20% giá vé (khuyến mãi thứ 4 hằng tuần)''),
+(''KM002'', N''Sinh nhật thành viên'',     N''Tặng combo'',      0, 1, ''2026-01-01'', ''2026-12-31'', N''Tặng 1 combo (combo rẻ nhất trong đơn) cho khách thành viên đúng dịp sinh nhật''),
+(''KM003'', N''Movie Lover'',              N''Giảm giá vé'',    15, 0, ''2026-01-01'', ''2026-12-31'', N''Giảm 15% giá vé cho người mê phim''),
+(''KM004'', N''Couple Day'',               N''Giảm hóa đơn'',   20, 0, ''2026-01-01'', ''2026-12-31'', N''Giảm 20% tổng hóa đơn cho cặp đôi''),
+(''KM005'', N''Family Movie'',             N''Giảm hóa đơn'',   15, 0, ''2026-01-01'', ''2026-12-31'', N''Giảm 15% tổng hóa đơn cho gia đình''),
+(''KM006'', N''Student Discount'',         N''Giảm giá vé'',    20, 0, ''2026-01-01'', ''2026-12-31'', N''Giảm 20% giá vé cho học sinh, sinh viên''),
+(''KM007'', N''Super Combo'',              N''Giảm giá combo'', 10, 0, ''2026-01-01'', ''2026-12-31'', N''Giảm 10% giá combo bắp nước''),
+(''KM008'', N''Weekend Deal'',             N''Giảm giá vé'',    10, 0, ''2026-01-01'', ''2026-12-31'', N''Giảm 10% giá vé cuối tuần''),
+(''KM009'', N''Member Special'',           N''Giảm hóa đơn'',   10, 0, ''2026-01-01'', ''2026-12-31'', N''Giảm 10% tổng hóa đơn cho thành viên''),
+(''KM010'', N''Mừng phim bom tấn'',        N''Giảm giá combo'', 25, 0, ''2026-01-01'', ''2026-12-31'', N''Giảm 25% giá combo khi xem phim bom tấn'');
+';
+        EXEC sys.sp_executesql N'
 -- Combo bắp nước
 INSERT INTO ComboBapNuoc (MaCombo, TenCombo, GiaBan, MoTa, TrangThai) VALUES
-('CB01', N'Solo Combo',   69000,  N'1 bắp + 1 nước',               N'Đang bán'),
-('CB02', N'Couple Combo', 99000,  N'1 bắp + 2 nước',               N'Đang bán'),
-('CB03', N'Family Combo', 159000, N'2 bắp + 4 nước + 2 snack',     N'Đang bán');
-GO
-
+(''CB01'', N''Solo Combo'',   69000,  N''1 bắp + 1 nước'',               N''Đang bán''),
+(''CB02'', N''Couple Combo'', 99000,  N''1 bắp + 2 nước'',               N''Đang bán''),
+(''CB03'', N''Family Combo'', 159000, N''2 bắp + 4 nước + 2 snack'',     N''Đang bán'');
+';
+        EXEC sys.sp_executesql N'
 -- Thể loại phim (20 thể loại)
 INSERT INTO TheLoai (MaTheLoai, TenTheLoai, MoTa) VALUES
-('TL001', N'Hành động', N'Phim hành động'),
-('TL002', N'Phiêu lưu', N'Phim phiêu lưu'),
-('TL003', N'Hoạt hình', N'Phim hoạt hình'),
-('TL004', N'Kinh dị', N'Phim kinh dị'),
-('TL005', N'Hài', N'Phim hài'),
-('TL006', N'Tình cảm', N'Phim tình cảm'),
-('TL007', N'Tâm lý', N'Phim tâm lý'),
-('TL008', N'Khoa học viễn tưởng', N'Phim khoa học viễn tưởng'),
-('TL009', N'Viễn tưởng', N'Phim viễn tưởng'),
-('TL010', N'Chính kịch', N'Phim chính kịch'),
-('TL011', N'Hình sự', N'Phim hình sự'),
-('TL012', N'Trinh thám', N'Phim trinh thám'),
-('TL013', N'Chiến tranh', N'Phim chiến tranh'),
-('TL014', N'Gia đình', N'Phim gia đình'),
-('TL015', N'Thần thoại', N'Phim thần thoại'),
-('TL016', N'Tài liệu', N'Phim tài liệu'),
-('TL017', N'Âm nhạc', N'Phim âm nhạc'),
-('TL018', N'Thể thao', N'Phim thể thao'),
-('TL019', N'Võ thuật', N'Phim võ thuật'),
-('TL020', N'Lịch sử', N'Phim lịch sử');
-GO
-
--- Phim: mã '1'..'7' để khớp phần gán ảnh theo MaPhim trong Phim_GUI
+(''TL001'', N''Hành động'', N''Phim hành động''),
+(''TL002'', N''Phiêu lưu'', N''Phim phiêu lưu''),
+(''TL003'', N''Hoạt hình'', N''Phim hoạt hình''),
+(''TL004'', N''Kinh dị'', N''Phim kinh dị''),
+(''TL005'', N''Hài'', N''Phim hài''),
+(''TL006'', N''Tình cảm'', N''Phim tình cảm''),
+(''TL007'', N''Tâm lý'', N''Phim tâm lý''),
+(''TL008'', N''Khoa học viễn tưởng'', N''Phim khoa học viễn tưởng''),
+(''TL009'', N''Viễn tưởng'', N''Phim viễn tưởng''),
+(''TL010'', N''Chính kịch'', N''Phim chính kịch''),
+(''TL011'', N''Hình sự'', N''Phim hình sự''),
+(''TL012'', N''Trinh thám'', N''Phim trinh thám''),
+(''TL013'', N''Chiến tranh'', N''Phim chiến tranh''),
+(''TL014'', N''Gia đình'', N''Phim gia đình''),
+(''TL015'', N''Thần thoại'', N''Phim thần thoại''),
+(''TL016'', N''Tài liệu'', N''Phim tài liệu''),
+(''TL017'', N''Âm nhạc'', N''Phim âm nhạc''),
+(''TL018'', N''Thể thao'', N''Phim thể thao''),
+(''TL019'', N''Võ thuật'', N''Phim võ thuật''),
+(''TL020'', N''Lịch sử'', N''Phim lịch sử'');
+';
+        EXEC sys.sp_executesql N'
+-- Phim: mã ''1''..''7'' để khớp phần gán ảnh theo MaPhim trong Phim_GUI
 INSERT INTO Phim (MaPhim, TenPhim, ThoiLuong, TrangThai, MoTa, DaoDien, DienVien, GioiHanTuoi, NgayKhoiChieu) VALUES
-('1', N'Avengers Endgame', 181, N'Đang Chiếu', N'', N'', N'', N'T13', '2026-01-10'),
-('2', N'Frozen 2',         103, N'Đang Chiếu', N'', N'', N'', N'P',   '2026-02-01'),
-('3', N'Joker',            122, N'Đang Chiếu', N'', N'', N'', N'T18', '2026-02-15'),
-('4', N'Spider Man',       148, N'Đang Chiếu', N'', N'', N'', N'T13', '2026-03-01'),
-('5', N'The Lion King',    118, N'Đang Chiếu', N'', N'', N'', N'P',   '2026-03-20'),
-('6', N'Doraemon',         108, N'Đang Chiếu', N'', N'', N'', N'P',   '2026-04-01'),
-('7', N'Kamen Rider',       90, N'Sắp Chiếu',  N'', N'', N'', N'T13', '2026-12-01');
-GO
-
+(''1'', N''Avengers Endgame'', 181, N''Đang Chiếu'', N'''', N'''', N'''', N''T13'', ''2026-01-10''),
+(''2'', N''Frozen 2'',         103, N''Đang Chiếu'', N'''', N'''', N'''', N''P'',   ''2026-02-01''),
+(''3'', N''Joker'',            122, N''Đang Chiếu'', N'''', N'''', N'''', N''T18'', ''2026-02-15''),
+(''4'', N''Spider Man'',       148, N''Đang Chiếu'', N'''', N'''', N'''', N''T13'', ''2026-03-01''),
+(''5'', N''The Lion King'',    118, N''Đang Chiếu'', N'''', N'''', N'''', N''P'',   ''2026-03-20''),
+(''6'', N''Doraemon'',         108, N''Đang Chiếu'', N'''', N'''', N'''', N''P'',   ''2026-04-01''),
+(''7'', N''Kamen Rider'',       90, N''Sắp Chiếu'',  N'''', N'''', N'''', N''T13'', ''2026-12-01'');
+';
+        EXEC sys.sp_executesql N'
 -- Thể loại của từng phim (giao diện chọn 1 thể loại/phim; bảng vẫn cho phép nhiều thể loại)
 INSERT INTO Phim_TheLoai (MaPhim, MaTheLoai) VALUES
-('1', 'TL001'), ('2', 'TL003'), ('3', 'TL007'), ('4', 'TL001'), ('5', 'TL003'), ('6', 'TL003'), ('7', 'TL001');
-GO
-
+(''1'', ''TL001''), (''2'', ''TL003''), (''3'', ''TL007''), (''4'', ''TL001''), (''5'', ''TL003''), (''6'', ''TL003''), (''7'', ''TL001'');
+';
+        EXEC sys.sp_executesql N'
 -- Phòng chiếu
 INSERT INTO PhongChieu (MaPhongChieu, TenPhongChieu, LoaiPhongChieu, TrangThai, SucChua) VALUES
-('P01', N'Phòng 1', N'2D', N'Hoạt động', 100),
-('P02', N'Phòng 2', N'3D', N'Hoạt động', 100);
-GO
-
+(''P01'', N''Phòng 1'', N''2D'', N''Hoạt động'', 100),
+(''P02'', N''Phòng 2'', N''3D'', N''Hoạt động'', 100);
+';
+        EXEC sys.sp_executesql N'
 -- Ghế: mỗi phòng 10 hàng (A-J) x 10 cột = 100 ghế. Mã ghế dạng P01A01. Hàng G-J là ghế VIP.
 DECLARE @p INT = 1, @r INT, @c INT, @maPhong VARCHAR(20), @viTri NVARCHAR(10);
 WHILE @p <= 2
 BEGIN
-    SET @maPhong = 'P0' + CAST(@p AS VARCHAR(1));
+    SET @maPhong = ''P0'' + CAST(@p AS VARCHAR(1));
     SET @r = 0;
     WHILE @r < 10
     BEGIN
         SET @c = 1;
         WHILE @c <= 10
         BEGIN
-            SET @viTri = CHAR(65 + @r) + RIGHT('0' + CAST(@c AS VARCHAR(2)), 2);
+            SET @viTri = CHAR(65 + @r) + RIGHT(''0'' + CAST(@c AS VARCHAR(2)), 2);
             INSERT INTO Ghe (MaGhe, ViTri, MaPhongChieu, LoaiGhe)
-            VALUES (@maPhong + @viTri, @viTri, @maPhong, CASE WHEN @r >= 6 THEN N'VIP' ELSE N'Thường' END);
+            VALUES (@maPhong + @viTri, @viTri, @maPhong, CASE WHEN @r >= 6 THEN N''VIP'' ELSE N''Thường'' END);
             SET @c = @c + 1;
         END
         SET @r = @r + 1;
     END
     SET @p = @p + 1;
 END
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- Suất chiếu mẫu: ngày mai, mỗi phòng không trùng giờ. GioKetThuc = GioBatDau + ThoiLuong (phút) của phim.
 INSERT INTO SuatChieu (MaSuatChieu, MaPhim, MaPhongChieu, GioBatDau, GioKetThuc, GiaVe, TrangThai)
 SELECT v.MaSuatChieu, v.MaPhim, v.MaPhongChieu,
        DATEADD(HOUR, v.Gio, CAST(CAST(DATEADD(DAY, 1, GETDATE()) AS DATE) AS DATETIME)),
        DATEADD(MINUTE, p.ThoiLuong,
                DATEADD(HOUR, v.Gio, CAST(CAST(DATEADD(DAY, 1, GETDATE()) AS DATE) AS DATETIME))),
-       v.GiaVe, N'Đang Mở Bán'
+       v.GiaVe, N''Đang Mở Bán''
 FROM (VALUES
-    ('SC01', '1', 'P01',  9, 100000),
-    ('SC02', '2', 'P01', 13, 100000),
-    ('SC03', '3', 'P01', 16, 100000),
-    ('SC04', '4', 'P02', 10, 120000),
-    ('SC05', '5', 'P02', 14, 120000),
-    ('SC06', '6', 'P02', 18, 120000)
+    (''SC01'', ''1'', ''P01'',  9, 100000),
+    (''SC02'', ''2'', ''P01'', 13, 100000),
+    (''SC03'', ''3'', ''P01'', 16, 100000),
+    (''SC04'', ''4'', ''P02'', 10, 120000),
+    (''SC05'', ''5'', ''P02'', 14, 120000),
+    (''SC06'', ''6'', ''P02'', 18, 120000)
 ) AS v (MaSuatChieu, MaPhim, MaPhongChieu, Gio, GiaVe)
 JOIN Phim p ON p.MaPhim = v.MaPhim;
-GO
-
--- Khởi tạo trạng thái ghế 'Trống' cho mọi suất chiếu mẫu (giống GheDAO.khoiTaoTrangThaiGheChoSuatChieu)
+';
+        EXEC sys.sp_executesql N'
+-- Khởi tạo trạng thái ghế ''Trống'' cho mọi suất chiếu mẫu (giống GheDAO.khoiTaoTrangThaiGheChoSuatChieu)
 INSERT INTO Ghe_SuatChieu (MaSuatChieu, MaGhe, TrangThai)
-SELECT sc.MaSuatChieu, g.MaGhe, N'Trống'
+SELECT sc.MaSuatChieu, g.MaGhe, N''Trống''
 FROM SuatChieu sc
 JOIN Ghe g ON g.MaPhongChieu = sc.MaPhongChieu;
-GO
-
+';
+        EXEC sys.sp_executesql N'
 -- Vé mẫu cho suất SC01: VE001, VE002 đã bán (hóa đơn HD001); VE003 đang giữ chỗ (phiếu đặt PD001)
 INSERT INTO Ve (MaVe, MaSuatChieu, MaGhe, GiaTien, TrangThai) VALUES
-('VE001', 'SC01', 'P01E05', 100000, N'Đã bán'),
-('VE002', 'SC01', 'P01E06', 100000, N'Đã bán'),
-('VE003', 'SC01', 'P01E07', 100000, N'Đã đặt');
+(''VE001'', ''SC01'', ''P01E05'', 100000, N''Đã bán''),
+(''VE002'', ''SC01'', ''P01E06'', 100000, N''Đã bán''),
+(''VE003'', ''SC01'', ''P01E07'', 100000, N''Đã đặt'');
 
-UPDATE gs SET TrangThai=CASE WHEN v.TrangThai=N'Đã bán' THEN N'Đã bán' ELSE N'Đã đặt' END
+UPDATE gs SET TrangThai=CASE WHEN v.TrangThai=N''Đã bán'' THEN N''Đã bán'' ELSE N''Đã đặt'' END
 FROM Ghe_SuatChieu gs JOIN Ve v ON v.MaSuatChieu=gs.MaSuatChieu AND v.MaGhe=gs.MaGhe
-WHERE gs.MaSuatChieu='SC01' AND gs.MaGhe IN ('P01E05','P01E06','P01E07');
-GO
-
+WHERE gs.MaSuatChieu=''SC01'' AND gs.MaGhe IN (''P01E05'',''P01E06'',''P01E07'');
+';
+        EXEC sys.sp_executesql N'
 -- Phiếu đặt vé: KH02 giữ chỗ 1 vé
 INSERT INTO PhieuDatVe (MaPhieuDatVe, NgayDat, MaKhachHang, TrangThai)
-VALUES ('PD001', CAST(GETDATE() AS DATE), 'KH02', N'Chờ xác nhận');
+VALUES (''PD001'', CAST(GETDATE() AS DATE), ''KH02'', N''Chờ xác nhận'');
 
-INSERT INTO ChiTietPhieuDatVe (MaPhieuDatVe, MaVe, DonGia) VALUES ('PD001', 'VE003', 100000);
-GO
-
+INSERT INTO ChiTietPhieuDatVe (MaPhieuDatVe, MaVe, DonGia) VALUES (''PD001'', ''VE003'', 100000);
+';
+        EXEC sys.sp_executesql N'
 -- Hóa đơn mẫu: KH01 mua 2 vé + 1 Solo Combo, khuyến mãi KM009 (Member Special - giảm 10% hóa đơn)
 --   (100000 + 100000 + 69000) x 0.9 = 242100
 INSERT INTO HoaDon (MaHoaDon, NgayLap, MaNhanVien, MaKhachHang, MaKhuyenMai, PhuongThucThanhToan, MaPhieuDatVe)
-VALUES ('HD001', GETDATE(), 'NV02', 'KH01', 'KM009', N'Tiền mặt', NULL);
+VALUES (''HD001'', GETDATE(), ''NV02'', ''KH01'', ''KM009'', N''Tiền mặt'', NULL);
 
 INSERT INTO ChiTietHoaDon (MaHoaDon, MaVe, MaCombo, SoLuong, DonGia) VALUES
-('HD001', 'VE001', NULL,   1, 100000),
-('HD001', 'VE002', NULL,   1, 100000),
-('HD001', NULL,    'CB01', 1, 69000);
-GO
+(''HD001'', ''VE001'', NULL,   1, 100000),
+(''HD001'', ''VE002'', NULL,   1, 100000),
+(''HD001'', NULL,    ''CB01'', 1, 69000);
+';
+    END
+    ELSE IF OBJECT_ID(N'dbo.NhanVien',N'U') IS NULL
+         OR OBJECT_ID(N'dbo.KhuyenMai',N'U') IS NULL
+         OR OBJECT_ID(N'dbo.HoaDon',N'U') IS NULL
+         OR OBJECT_ID(N'dbo.Phim',N'U') IS NULL
+         OR OBJECT_ID(N'dbo.ChiTietHoaDon',N'U') IS NULL
+        THROW 50002, N'Database chưa đủ cấu trúc của dự án; thao tác đã được hủy.', 1;
 
--- Kiểm tra bảng, số dòng dữ liệu và tổng tiền hóa đơn mẫu
-SELECT t.name AS Bang, SUM(p.rows) AS SoDong
-FROM sys.tables t
-JOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0, 1)
-GROUP BY t.name
-ORDER BY t.name;
-
-SELECT MaHoaDon, TongTienGoc, TongTien FROM vw_HoaDon_TongTien;
-GO
-
-
-
-
-
--- Nang cap ca ban v6 va ban java_hsk_group, khong reset database.
-USE QuanLyBanVePhimMoi;
-GO
-SET ANSI_NULLS ON;
-SET QUOTED_IDENTIFIER ON;
-SET ANSI_WARNINGS ON;
-SET ARITHABORT ON;
-SET CONCAT_NULL_YIELDS_NULL ON;
-SET NUMERIC_ROUNDABORT OFF;
-GO
-IF COL_LENGTH('KhuyenMai','HinhThuc') IS NULL
-    ALTER TABLE KhuyenMai ADD HinhThuc NVARCHAR(30) NOT NULL CONSTRAINT DF_KM_HinhThuc_Merged DEFAULT N'Giảm hóa đơn';
-IF COL_LENGTH('KhuyenMai','SoComboTang') IS NULL
+    -- 2. Nâng cấp các cột và view còn thiếu; giữ dữ liệu hiện có.
+    EXEC sys.sp_executesql N'
+IF COL_LENGTH(''KhuyenMai'',''HinhThuc'') IS NULL
+    ALTER TABLE KhuyenMai ADD HinhThuc NVARCHAR(30) NOT NULL CONSTRAINT DF_KM_HinhThuc_Merged DEFAULT N''Giảm hóa đơn'';
+IF COL_LENGTH(''KhuyenMai'',''SoComboTang'') IS NULL
     ALTER TABLE KhuyenMai ADD SoComboTang INT NOT NULL CONSTRAINT DF_KM_Combo_Merged DEFAULT 0;
-IF COL_LENGTH('HoaDon','TrangThai') IS NULL
-    ALTER TABLE HoaDon ADD TrangThai NVARCHAR(30) NOT NULL CONSTRAINT DF_HD_TrangThai_Merged DEFAULT N'Đã thanh toán';
-IF COL_LENGTH('HoaDon','GhiChuHuy') IS NULL
+IF COL_LENGTH(''HoaDon'',''TrangThai'') IS NULL
+    ALTER TABLE HoaDon ADD TrangThai NVARCHAR(30) NOT NULL CONSTRAINT DF_HD_TrangThai_Merged DEFAULT N''Đã thanh toán'';
+IF COL_LENGTH(''HoaDon'',''GhiChuHuy'') IS NULL
     ALTER TABLE HoaDon ADD GhiChuHuy NVARCHAR(300) NULL;
-GO
-IF COL_LENGTH('HoaDon','PhanTramGiamApDung') IS NULL
+';
+    EXEC sys.sp_executesql N'
+IF COL_LENGTH(''HoaDon'',''PhanTramGiamApDung'') IS NULL
 BEGIN
     ALTER TABLE HoaDon ADD PhanTramGiamApDung DECIMAL(5,2) NOT NULL CONSTRAINT DF_HD_PhanTram_Merged DEFAULT 0;
-    EXEC(N'UPDATE h SET PhanTramGiamApDung=ISNULL(k.PhanTramGiam,0) FROM HoaDon h LEFT JOIN KhuyenMai k ON k.MaKhuyenMai=h.MaKhuyenMai');
+    EXEC(N''UPDATE h SET PhanTramGiamApDung=ISNULL(k.PhanTramGiam,0) FROM HoaDon h LEFT JOIN KhuyenMai k ON k.MaKhuyenMai=h.MaKhuyenMai'');
 END
-GO
-IF COL_LENGTH('HoaDon','HinhThucApDung') IS NULL
+';
+    EXEC sys.sp_executesql N'
+IF COL_LENGTH(''HoaDon'',''HinhThucApDung'') IS NULL
 BEGIN
-    ALTER TABLE HoaDon ADD HinhThucApDung NVARCHAR(30) NOT NULL CONSTRAINT DF_HD_HinhThuc_Merged DEFAULT N'Giảm hóa đơn';
-    EXEC(N'UPDATE h SET HinhThucApDung=ISNULL(k.HinhThuc,N''Giảm hóa đơn'') FROM HoaDon h LEFT JOIN KhuyenMai k ON k.MaKhuyenMai=h.MaKhuyenMai');
+    ALTER TABLE HoaDon ADD HinhThucApDung NVARCHAR(30) NOT NULL CONSTRAINT DF_HD_HinhThuc_Merged DEFAULT N''Giảm hóa đơn'';
+    EXEC(N''UPDATE h SET HinhThucApDung=ISNULL(k.HinhThuc,N''''Giảm hóa đơn'''') FROM HoaDon h LEFT JOIN KhuyenMai k ON k.MaKhuyenMai=h.MaKhuyenMai'');
 END
-GO
-IF COL_LENGTH('HoaDon','SoComboTangApDung') IS NULL
+';
+    EXEC sys.sp_executesql N'
+IF COL_LENGTH(''HoaDon'',''SoComboTangApDung'') IS NULL
 BEGIN
     ALTER TABLE HoaDon ADD SoComboTangApDung INT NOT NULL CONSTRAINT DF_HD_Combo_Merged DEFAULT 0;
-    EXEC(N'UPDATE h SET SoComboTangApDung=ISNULL(k.SoComboTang,0) FROM HoaDon h LEFT JOIN KhuyenMai k ON k.MaKhuyenMai=h.MaKhuyenMai');
+    EXEC(N''UPDATE h SET SoComboTangApDung=ISNULL(k.SoComboTang,0) FROM HoaDon h LEFT JOIN KhuyenMai k ON k.MaKhuyenMai=h.MaKhuyenMai'');
 END
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name='CK_HD_Combo_Merged')
+';
+    EXEC sys.sp_executesql N'
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name=''CK_HD_Combo_Merged'')
     ALTER TABLE HoaDon ADD CONSTRAINT CK_HD_Combo_Merged CHECK (SoComboTangApDung>=0);
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name='CK_HD_Pct_Merged')
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name=''CK_HD_Pct_Merged'')
     ALTER TABLE HoaDon ADD CONSTRAINT CK_HD_Pct_Merged CHECK (PhanTramGiamApDung BETWEEN 0 AND 100);
-GO
+';
+    EXEC sys.sp_executesql N'
 CREATE OR ALTER VIEW vw_HoaDon_TongTien AS
 WITH Tong AS (
     SELECT h.MaHoaDon,h.NgayLap,h.MaNhanVien,h.MaKhachHang,h.MaKhuyenMai,h.PhuongThucThanhToan,
@@ -577,10 +529,10 @@ WITH Tong AS (
     GROUP BY h.MaHoaDon,h.NgayLap,h.MaNhanVien,h.MaKhachHang,h.MaKhuyenMai,h.PhuongThucThanhToan,
              h.MaPhieuDatVe,h.TrangThai,h.PhanTramGiamApDung,h.HinhThucApDung,h.SoComboTangApDung
 ), Giam AS (
-    SELECT *, CASE WHEN HinhThucApDung IN (N'Giảm giá vé',N'Giảm hóa đơn')
+    SELECT *, CASE WHEN HinhThucApDung IN (N''Giảm giá vé'',N''Giảm hóa đơn'')
                    THEN TienVe*PhanTramGiamApDung/100.0 ELSE 0 END GiamVe,
-              CASE WHEN HinhThucApDung IN (N'Giảm giá combo',N'Giảm hóa đơn') THEN TienCombo*PhanTramGiamApDung/100.0
-                   WHEN HinhThucApDung=N'Tặng combo' THEN GiaComboMin*CASE WHEN SoCombo<SoComboTangApDung THEN SoCombo ELSE SoComboTangApDung END
+              CASE WHEN HinhThucApDung IN (N''Giảm giá combo'',N''Giảm hóa đơn'') THEN TienCombo*PhanTramGiamApDung/100.0
+                   WHEN HinhThucApDung=N''Tặng combo'' THEN GiaComboMin*CASE WHEN SoCombo<SoComboTangApDung THEN SoCombo ELSE SoComboTangApDung END
                    ELSE 0 END GiamCombo
     FROM Tong
 )
@@ -590,20 +542,10 @@ SELECT MaHoaDon,NgayLap,MaNhanVien,MaKhachHang,MaKhuyenMai,PhuongThucThanhToan,M
        CAST(TienVe-GiamVe AS DECIMAL(18,2)) DoanhThuVe,
        CAST(TienCombo-GiamCombo AS DECIMAL(18,2)) DoanhThuCombo
 FROM Giam;
-GO
-
-/* ============================================================
-   NÂNG CẤP CSDL QuanLyBanVePhimMoi (chạy trên CSDL đang dùng, KHÔNG xóa dữ liệu)
-   - Tạo bảng TheLoai (20 thể loại TL001-TL020) và bảng Phim_TheLoai (Phim - TheLoai)
-   - Chuyển thể loại cũ của từng phim (cột Phim.MaLoaiPhim, bảng LoaiPhim) sang Phim_TheLoai
-   - Xóa cột Phim.MaLoaiPhim và bảng LoaiPhim
-   Chạy lại nhiều lần vẫn an toàn.
-   ============================================================ */
-USE QuanLyBanVePhimMoi;
-GO
-
+';
+    EXEC sys.sp_executesql N'
 -- 1. Bảng TheLoai
-IF OBJECT_ID('TheLoai', 'U') IS NULL
+IF OBJECT_ID(''TheLoai'', ''U'') IS NULL
     CREATE TABLE TheLoai (
         MaTheLoai  VARCHAR(20)   NOT NULL,
         TenTheLoai NVARCHAR(100) NOT NULL,
@@ -611,38 +553,38 @@ IF OBJECT_ID('TheLoai', 'U') IS NULL
         CONSTRAINT PK_TheLoai PRIMARY KEY (MaTheLoai),
         CONSTRAINT UQ_TheLoai_Ten UNIQUE (TenTheLoai)
     );
-GO
-
+';
+    EXEC sys.sp_executesql N'
 -- 2. 20 thể loại (bỏ qua thể loại đã có)
 INSERT INTO TheLoai (MaTheLoai, TenTheLoai, MoTa)
 SELECT v.Ma, v.Ten, v.MoTa
 FROM (VALUES
-    ('TL001', N'Hành động', N'Phim hành động'),
-    ('TL002', N'Phiêu lưu', N'Phim phiêu lưu'),
-    ('TL003', N'Hoạt hình', N'Phim hoạt hình'),
-    ('TL004', N'Kinh dị', N'Phim kinh dị'),
-    ('TL005', N'Hài', N'Phim hài'),
-    ('TL006', N'Tình cảm', N'Phim tình cảm'),
-    ('TL007', N'Tâm lý', N'Phim tâm lý'),
-    ('TL008', N'Khoa học viễn tưởng', N'Phim khoa học viễn tưởng'),
-    ('TL009', N'Viễn tưởng', N'Phim viễn tưởng'),
-    ('TL010', N'Chính kịch', N'Phim chính kịch'),
-    ('TL011', N'Hình sự', N'Phim hình sự'),
-    ('TL012', N'Trinh thám', N'Phim trinh thám'),
-    ('TL013', N'Chiến tranh', N'Phim chiến tranh'),
-    ('TL014', N'Gia đình', N'Phim gia đình'),
-    ('TL015', N'Thần thoại', N'Phim thần thoại'),
-    ('TL016', N'Tài liệu', N'Phim tài liệu'),
-    ('TL017', N'Âm nhạc', N'Phim âm nhạc'),
-    ('TL018', N'Thể thao', N'Phim thể thao'),
-    ('TL019', N'Võ thuật', N'Phim võ thuật'),
-    ('TL020', N'Lịch sử', N'Phim lịch sử')
+    (''TL001'', N''Hành động'', N''Phim hành động''),
+    (''TL002'', N''Phiêu lưu'', N''Phim phiêu lưu''),
+    (''TL003'', N''Hoạt hình'', N''Phim hoạt hình''),
+    (''TL004'', N''Kinh dị'', N''Phim kinh dị''),
+    (''TL005'', N''Hài'', N''Phim hài''),
+    (''TL006'', N''Tình cảm'', N''Phim tình cảm''),
+    (''TL007'', N''Tâm lý'', N''Phim tâm lý''),
+    (''TL008'', N''Khoa học viễn tưởng'', N''Phim khoa học viễn tưởng''),
+    (''TL009'', N''Viễn tưởng'', N''Phim viễn tưởng''),
+    (''TL010'', N''Chính kịch'', N''Phim chính kịch''),
+    (''TL011'', N''Hình sự'', N''Phim hình sự''),
+    (''TL012'', N''Trinh thám'', N''Phim trinh thám''),
+    (''TL013'', N''Chiến tranh'', N''Phim chiến tranh''),
+    (''TL014'', N''Gia đình'', N''Phim gia đình''),
+    (''TL015'', N''Thần thoại'', N''Phim thần thoại''),
+    (''TL016'', N''Tài liệu'', N''Phim tài liệu''),
+    (''TL017'', N''Âm nhạc'', N''Phim âm nhạc''),
+    (''TL018'', N''Thể thao'', N''Phim thể thao''),
+    (''TL019'', N''Võ thuật'', N''Phim võ thuật''),
+    (''TL020'', N''Lịch sử'', N''Phim lịch sử'')
 ) AS v (Ma, Ten, MoTa)
 WHERE NOT EXISTS (SELECT 1 FROM TheLoai t WHERE t.MaTheLoai = v.Ma OR t.TenTheLoai = v.Ten);
-GO
-
+';
+    EXEC sys.sp_executesql N'
 -- 3. Bảng Phim_TheLoai (một phim có thể có nhiều thể loại)
-IF OBJECT_ID('Phim_TheLoai', 'U') IS NULL
+IF OBJECT_ID(''Phim_TheLoai'', ''U'') IS NULL
     CREATE TABLE Phim_TheLoai (
         MaPhim    VARCHAR(20) NOT NULL,
         MaTheLoai VARCHAR(20) NOT NULL,
@@ -650,60 +592,79 @@ IF OBJECT_ID('Phim_TheLoai', 'U') IS NULL
         CONSTRAINT FK_PhimTheLoai_Phim FOREIGN KEY (MaPhim) REFERENCES Phim(MaPhim) ON DELETE CASCADE,
         CONSTRAINT FK_PhimTheLoai_TheLoai FOREIGN KEY (MaTheLoai) REFERENCES TheLoai(MaTheLoai)
     );
-GO
-
+';
+    EXEC sys.sp_executesql N'
 -- 4. Chuyển dữ liệu từ LoaiPhim cũ (chỉ chạy khi Phim còn cột MaLoaiPhim)
-IF COL_LENGTH('Phim', 'MaLoaiPhim') IS NOT NULL AND OBJECT_ID('LoaiPhim', 'U') IS NOT NULL
+IF COL_LENGTH(''Phim'', ''MaLoaiPhim'') IS NOT NULL AND OBJECT_ID(''LoaiPhim'', ''U'') IS NOT NULL
 BEGIN
     -- 4a. Loại phim cũ chưa trùng tên với 20 thể loại trên -> thêm thành thể loại mới (TL021, TL022, ...)
-    EXEC(N'
+    EXEC(N''
         DECLARE @n INT = (SELECT COUNT(*) FROM TheLoai);
         INSERT INTO TheLoai (MaTheLoai, TenTheLoai, MoTa)
-        SELECT ''TL'' + RIGHT(''000'' + CAST(@n + ROW_NUMBER() OVER (ORDER BY l.MaLoaiPhim) AS VARCHAR(10)), 3),
+        SELECT ''''TL'''' + RIGHT(''''000'''' + CAST(@n + ROW_NUMBER() OVER (ORDER BY l.MaLoaiPhim) AS VARCHAR(10)), 3),
                l.TenLoaiPhim, l.MoTa
         FROM LoaiPhim l
         WHERE NOT EXISTS (SELECT 1 FROM TheLoai t WHERE t.TenTheLoai = l.TenLoaiPhim COLLATE Vietnamese_CI_AS);
-    ');
+    '');
     -- 4b. Gán thể loại cho từng phim theo loại phim cũ
-    EXEC(N'
+    EXEC(N''
         INSERT INTO Phim_TheLoai (MaPhim, MaTheLoai)
         SELECT p.MaPhim, t.MaTheLoai
         FROM Phim p
         JOIN LoaiPhim l ON l.MaLoaiPhim = p.MaLoaiPhim
         JOIN TheLoai t ON t.TenTheLoai = l.TenLoaiPhim COLLATE Vietnamese_CI_AS
         WHERE NOT EXISTS (SELECT 1 FROM Phim_TheLoai x WHERE x.MaPhim = p.MaPhim AND x.MaTheLoai = t.MaTheLoai);
-    ');
+    '');
 END
-GO
-
+';
+    EXEC sys.sp_executesql N'
 -- 5. Bỏ khóa ngoại + cột Phim.MaLoaiPhim, xóa bảng LoaiPhim
-IF COL_LENGTH('Phim', 'MaLoaiPhim') IS NOT NULL
+IF COL_LENGTH(''Phim'', ''MaLoaiPhim'') IS NOT NULL
 BEGIN
     DECLARE @fk SYSNAME;
     SELECT @fk = fk.name
     FROM sys.foreign_keys fk
     JOIN sys.foreign_key_columns fc ON fc.constraint_object_id = fk.object_id
-    WHERE fk.parent_object_id = OBJECT_ID('Phim')
-      AND COL_NAME(fc.parent_object_id, fc.parent_column_id) = 'MaLoaiPhim';
-    IF @fk IS NOT NULL EXEC('ALTER TABLE Phim DROP CONSTRAINT ' + @fk);
+    WHERE fk.parent_object_id = OBJECT_ID(''Phim'')
+      AND COL_NAME(fc.parent_object_id, fc.parent_column_id) = ''MaLoaiPhim'';
+    IF @fk IS NOT NULL EXEC(''ALTER TABLE Phim DROP CONSTRAINT '' + @fk);
     ALTER TABLE Phim DROP COLUMN MaLoaiPhim;
 END
-GO
-IF OBJECT_ID('LoaiPhim', 'U') IS NOT NULL DROP TABLE LoaiPhim;
-GO
-
--- Kiểm tra nhanh
-SELECT p.MaPhim, p.TenPhim, t.MaTheLoai, t.TenTheLoai
-FROM Phim p
-LEFT JOIN Phim_TheLoai pt ON pt.MaPhim = p.MaPhim
-LEFT JOIN TheLoai t ON t.MaTheLoai = pt.MaTheLoai
-ORDER BY p.MaPhim;
-GO
-
-
+';
+    EXEC sys.sp_executesql N'
+IF OBJECT_ID(''LoaiPhim'', ''U'') IS NOT NULL DROP TABLE LoaiPhim;
+';
+    EXEC sys.sp_executesql N'
+-- PhieuDatVe.tinhTongTienDat(): tổng đơn giá các vé trong phiếu
+CREATE OR ALTER VIEW vw_PhieuDatVe_TongTien AS
+SELECT p.MaPhieuDatVe,
+       p.NgayDat,
+       p.MaKhachHang,
+       p.TrangThai,
+       ISNULL(SUM(ct.DonGia), 0) AS TongTienDat
+FROM PhieuDatVe p
+LEFT JOIN ChiTietPhieuDatVe ct ON ct.MaPhieuDatVe = p.MaPhieuDatVe
+GROUP BY p.MaPhieuDatVe, p.NgayDat, p.MaKhachHang, p.TrangThai;
+';
+    IF @KhoiTao=1
+    BEGIN
+        -- Hai phim bổ sung của bộ dữ liệu mẫu v6.
+        EXEC sys.sp_executesql N'
 INSERT INTO Phim (MaPhim,TenPhim,ThoiLuong,TrangThai,MoTa,DaoDien,DienVien,GioiHanTuoi,NgayKhoiChieu) VALUES
-('8', N'Ngày Con Còn Mẹ', 107, N'Đang Chiếu', N'Bộ phim gia đình xúc động về tình mẹ và những người con trưởng thành, nhắc ta trân trọng từng ngày còn được ở bên mẹ.', N'Vũ Ngọc Đãng', N'Hồng Đào, Phương Anh Đào, Huy Anh, Ma Ran Đô, Quỳnh Lương', N'T13', '2026-11-11'),
-('9', N'Godzilla Trừ Không', 135, N'Đang Chiếu', N'Nước Nhật hoang tàn sau chiến tranh phải đối mặt với sự xuất hiện của quái vật Godzilla. Người dân tự đứng lên chống lại thảm họa khi không còn gì để mất.', N'Takashi Yamazaki', N'Ryunosuke Kamiki, Minami Hamabe', N'T13', '2026-11-06');
+(''8'', N''Ngày Con Còn Mẹ'', 107, N''Đang Chiếu'', N''Bộ phim gia đình xúc động về tình mẹ và những người con trưởng thành, nhắc ta trân trọng từng ngày còn được ở bên mẹ.'', N''Vũ Ngọc Đãng'', N''Hồng Đào, Phương Anh Đào, Huy Anh, Ma Ran Đô, Quỳnh Lương'', N''T13'', ''2026-11-11''),
+(''9'', N''Godzilla Trừ Không'', 135, N''Đang Chiếu'', N''Nước Nhật hoang tàn sau chiến tranh phải đối mặt với sự xuất hiện của quái vật Godzilla. Người dân tự đứng lên chống lại thảm họa khi không còn gì để mất.'', N''Takashi Yamazaki'', N''Ryunosuke Kamiki, Minami Hamabe'', N''T13'', ''2026-11-06'');
+';
+        EXEC sys.sp_executesql N'
+INSERT INTO Phim_TheLoai(MaPhim,MaTheLoai) VALUES (''8'',''TL014''),(''9'',''TL001'');
+';
+    END
+    COMMIT TRANSACTION;
+    PRINT N'Hoàn tất. Database QuanLyBanVePhimMoi đã sẵn sàng; không cần chạy file SQL khác.';
+END TRY
+BEGIN CATCH
+    IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
 GO
-INSERT INTO Phim_TheLoai(MaPhim,MaTheLoai) VALUES ('8','TL014'),('9','TL001');
+SELECT DB_NAME() AS [Database], N'Sẵn sàng' AS [Kết quả];
 GO
