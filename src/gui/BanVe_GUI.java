@@ -92,7 +92,7 @@ public class BanVe_GUI extends JPanel {
         hienThi(cbSuatChieu, s -> { String[] p = s.split(" - "); return p.length >= 3 ? p[1].substring(11, 16) + " – " + p[2].substring(11, 16) + "  (" + p[0] + ")" : s; });
         hienThi(cbKhuyenMai, s -> { KhuyenMai k = kmDuLieu.get(s.split(" - ")[0]); return k == null ? s : k.getTenKhuyenMai() + " (" + k.mucUuDai() + ")"; });
 
-        // ===== Cột trái: poster + thông tin phim + ngày / phòng / suất =====
+        // Cột trái: poster + thông tin phim + ngày / phòng / suất 
         lblPoster.setPreferredSize(new Dimension(120, 172));
         JPanel tenBox = new JPanel(); tenBox.setOpaque(false); tenBox.setLayout(new BoxLayout(tenBox, BoxLayout.Y_AXIS));
         tenBox.add(Box.createVerticalGlue()); tenBox.add(lblTenPhim); tenBox.add(Box.createVerticalStrut(8));
@@ -107,7 +107,7 @@ public class BanVe_GUI extends JPanel {
         theTrai.setPreferredSize(new Dimension(310, 0));
         theTrai.add(dauPhim, BorderLayout.NORTH); theTrai.add(formWrap, BorderLayout.CENTER);
 
-        // ===== Giữa: màn hình + sơ đồ ghế + chú thích =====
+        // Giữa: màn hình + sơ đồ ghế + chú thích
         pnlSoDoGhe = new JPanel();
         pnlSoDoGhe.setLayout(new BoxLayout(pnlSoDoGhe, BoxLayout.Y_AXIS));
         pnlSoDoGhe.setBackground(new Color(0x101B40));
@@ -121,7 +121,7 @@ public class BanVe_GUI extends JPanel {
         AppTheme.Card theGhe = new AppTheme.Card(new BorderLayout(0, 10));
         theGhe.add(stage, BorderLayout.NORTH); theGhe.add(seatScroll, BorderLayout.CENTER); theGhe.add(taoChuThichGhe(), BorderLayout.SOUTH);
 
-        // ===== Phải: Thông tin đặt vé =====
+        // Phải: Thông tin đặt vé
         JPanel luoi = new JPanel(new GridBagLayout()); luoi.setOpaque(false);
         btnCombo = new JButton("Không chọn"); btnCombo.setHorizontalAlignment(SwingConstants.LEFT);
         btnCombo.setBackground(new Color(0xF4F7FF)); btnCombo.setForeground(new Color(0x1F2A44)); btnCombo.setFont(AppTheme.font(java.awt.Font.PLAIN, 13));
@@ -153,7 +153,7 @@ public class BanVe_GUI extends JPanel {
         body.add(theTrai, BorderLayout.WEST); body.add(theGhe, BorderLayout.CENTER); body.add(theHd, BorderLayout.EAST);
         add(body, BorderLayout.CENTER);
 
-        // ===== Dữ liệu ban đầu (chưa gắn sự kiện nên không chạy dây chuyền) =====
+        // Dữ liệu ban đầu (chưa gắn sự kiện nên không chạy dây chuyền)
         loadDanhSachPhim();
         for (int i = 0; i < cbPhim.getItemCount(); i++) {
             if (cbPhim.getItemAt(i).startsWith(maPhim + " -")) { cbPhim.setSelectedIndex(i); break; }
@@ -162,7 +162,7 @@ public class BanVe_GUI extends JPanel {
         loadDanhSachKhachHang();
         loadDanhSachKhuyenMai();
 
-        // ===== Sự kiện: Phim -> Ngày -> Phòng -> Suất -> Sơ đồ ghế =====
+        // Sự kiện: Phim -> Ngày -> Phòng -> Suất -> Sơ đồ ghế
         cbNgay.addItemListener(e -> {
             if (e.getStateChange() != ItemEvent.SELECTED) return;
             loadDanhSachPhongChieu(maPhimHienTai());

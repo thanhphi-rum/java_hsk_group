@@ -11,7 +11,7 @@ import java.awt.*;
 import java.math.BigDecimal;
 import java.util.TreeSet;
 
-/** Bước thu tiền tại quầy, mỗi phương thức một cách: tiền mặt (tính tiền thừa), chuyển khoản (mã VietQR), thẻ (máy POS). */
+/** Bước thu tiền tại quầy, mỗi phương thức một cách: tiền mặt (tính tiền thừa) và chuyển khoản (mã VietQR). */
 public final class ThuTienDialog {
     private static final Color XANH = new Color(0x4CD97B);
     private static final Color DO = new Color(0xFF6B6B);
@@ -29,8 +29,7 @@ public final class ThuTienDialog {
     /** @return kết quả khi đã thu tiền, hoặc null nếu nhân viên hủy. */
     public static KetQua hienThi(Component parent, String phuongThuc, BigDecimal soTien, String maHD) {
         if (PhuongThucThanhToan.TIEN_MAT.equals(phuongThuc)) return thuTienMat(parent, soTien);
-        if (PhuongThucThanhToan.CHUYEN_KHOAN.equals(phuongThuc)) return thuChuyenKhoan(parent, soTien, maHD);
-        return thuThe(parent, soTien);
+        return thuChuyenKhoan(parent, soTien, maHD);
     }
 
     // ------------------------------------------------------------ tiền mặt
@@ -106,29 +105,22 @@ public final class ThuTienDialog {
     private static KetQua thuChuyenKhoan(Component parent, BigDecimal soTien, String maHD) {
         JDialog d = taoHopThoai(parent, "Thu tiền - Chuyển khoản");
         JPanel pn = noiDung(d);
-        pn.add(nhan("Số tiền cần thu: " + tien(soTien), 18, true));
-        JLabel qr = new JLabel(new ImageIcon(QR.anh(VietQR.taoChuoi(soTien.longValue(), maHD), 280)));
-        qr.setAlignmentX(Component.LEFT_ALIGNMENT);
-        qr.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        pn.add(qr);
-        pn.add(nhan("Khách quét mã bằng app ngân hàng", 13, false));
-        pn.add(nhan(VietQR.TEN_NGAN_HANG + " · STK " + VietQR.SO_TAI_KHOAN, 13, false));
-        pn.add(nhan(VietQR.TEN_CHU_TK, 13, false));
-        pn.add(nhan("Nội dung: " + maHD, 13, false));
-        pn.add(Box.createVerticalStrut(6));
-        pn.add(nhan("Chỉ bấm \"Đã nhận tiền\" khi app ngân hàng của rạp đã báo nhận đủ.", 12, false));
-        return xacNhanDonGian(d, parent, pn, "Đã nhận tiền");
-    }
 
-    // ------------------------------------------------------------ thẻ ngân hàng
-    private static KetQua thuThe(Component parent, BigDecimal soTien) {
-        JDialog d = taoHopThoai(parent, "Thu tiền - Thẻ ngân hàng");
-        JPanel pn = noiDung(d);
-        pn.add(nhan("Số tiền cần thu: " + tien(soTien), 18, true));
-        pn.add(Box.createVerticalStrut(10));
-        pn.add(nhan("Nhập số tiền trên máy POS, khách quẹt hoặc chạm thẻ.", 13, false));
-        pn.add(nhan("Khi máy báo giao dịch thành công thì bấm \"Đã thu tiền\".", 13, false));
-        return xacNhanDonGian(d, parent, pn, "Đã thu tiền");
+        // Mọi thành phần canh giữa
+        JLabel lblTien = nhan("Số tiền cần thu: " + tien(soTien), 18, true);
+        JLabel qr = new JLabel(new ImageIcon(QR.anh(VietQR.taoChuoi(soTien.longValue(), maHD), 280)));
+        qr.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+        JLabel lblNganHang = nhan(VietQR.TEN_NGAN_HANG + " · STK " + VietQR.SO_TAI_KHOAN, 14, false);
+        JLabel lblChuTK = nhan(VietQR.TEN_CHU_TK, 14, false);
+        JLabel lblNoiDung = nhan("Nội dung: " + maHD, 14, false);
+
+        for (JLabel l : new JLabel[]{lblTien, qr, lblNganHang, lblChuTK, lblNoiDung}) {
+            l.setAlignmentX(Component.CENTER_ALIGNMENT);
+            l.setHorizontalAlignment(SwingConstants.CENTER);
+            pn.add(l);
+        }
+        pn.add(Box.createVerticalStrut(8));
+        return xacNhanDonGian(d, parent, pn, "Đã nhận tiền");
     }
 
     /** Hộp thoại chỉ có hai nút xác nhận/hủy; không đặt nút mặc định để tránh bấm Enter nhầm. */
