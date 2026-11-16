@@ -50,6 +50,8 @@ import dao.SuatChieuDAO;
 	    private JPanel timeline;
 	    /** Giờ bắt đầu và kết thúc đầy đủ (ngày + giờ) của từng dòng trong tableModel, cùng thứ tự dòng. */
 	    private final List<LocalDateTime[]> thoiGian = new java.util.ArrayList<>();
+	    /** Thời gian nghỉ tối thiểu (phút) giữa hai suất liên tiếp trong cùng phòng để dọn phòng. */
+	    private static final int GIO_NGHI_PHUT = 15;
 	    private static final DateTimeFormatter NGAY_F = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 	    private static final DateTimeFormatter GIO_F = DateTimeFormatter.ofPattern("HH:mm");
 	    private static final DateTimeFormatter NGAY_GIO_F = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -69,10 +71,12 @@ import dao.SuatChieuDAO;
 	        dcNgay.setDateFormatString("dd/MM/yyyy"); dcNgay.setDate(new Date());
 	        dcNgay.setPreferredSize(new Dimension(140, 36)); cbPhong.setPreferredSize(new Dimension(120, 36));
 	        JButton btnLamMoi = new JButton("Làm mới"); btnLamMoi.setPreferredSize(new Dimension(100, 36));
-	        btnLamMoi.addActionListener(e -> lamMoiDanhSach());
+	        btnLamMoi.addActionListener(e -> { dcNgay.setDate(new Date()); cbPhong.setSelectedItem("Tất cả"); lamMoiDanhSach(); });
+	        JButton btnTatCa = new JButton("Tất cả ngày"); btnTatCa.setPreferredSize(new Dimension(110, 36));
+	        btnTatCa.addActionListener(e -> dcNgay.setDate(null));
 	        JPanel loc = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0)); loc.setOpaque(false);
 	        loc.add(AppTheme.label("Ngày chiếu:", Font.PLAIN, 13, AppTheme.MUTED)); loc.add(dcNgay);
-	        loc.add(AppTheme.label("Phòng:", Font.PLAIN, 13, AppTheme.MUTED)); loc.add(cbPhong); loc.add(btnLamMoi);
+	        loc.add(AppTheme.label("Phòng:", Font.PLAIN, 13, AppTheme.MUTED)); loc.add(cbPhong); loc.add(btnTatCa); loc.add(btnLamMoi);
 	        dcNgay.addPropertyChangeListener("date", e -> apDungLoc());
 	        cbPhong.addActionListener(e -> apDungLoc());
 
@@ -220,19 +224,22 @@ import dao.SuatChieuDAO;
 	        return kt;
 	    }
 
-	    /** Có suất khác trong cùng phòng chồng giờ với khoảng [bd, kt) không (bỏ qua suất maBoQua nếu có). */
-	    private boolean biTrungGio(Connection conn, String maPhong, String maBoQua, LocalDateTime bd, LocalDateTime kt) throws SQLException {
-	        String sql = "SELECT 1 FROM SuatChieu WHERE MaPhongChieu = ? " + (maBoQua == null ? "" : "AND MaSuatChieu <> ? ")
-	                + "AND ((GioBatDau <= ? AND GioKetThuc > ?) OR (GioBatDau < ? AND GioBatDau >= ?))";
+	    /**
+	     * Tìm suất khác trong cùng phòng bị trùng giờ với [bd, kt]. Giữa 2 suất phải cách nhau ít nhất GIO_NGHI_PHUT phút.
+	     * Trả về mã suất bị trùng, không trùng thì trả về null (maBoQua là suất đang sửa, null nếu đang thêm mới).
+	     */
+	    private String timSuatTrung(Connection conn, String maPhong, String maBoQua, LocalDateTime bd, LocalDateTime kt) throws SQLException {
+	        String sql = "SELECT TOP 1 MaSuatChieu FROM SuatChieu WHERE MaPhongChieu = ? AND MaSuatChieu <> ? "
+	                + "AND GioBatDau < ? AND DATEADD(MINUTE, ?, GioKetThuc) > ?";
 	        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-	            int i = 1;
-	            ps.setString(i++, maPhong);
-	            if (maBoQua != null) ps.setString(i++, maBoQua);
-	            ps.setTimestamp(i++, Timestamp.valueOf(bd));
-	            ps.setTimestamp(i++, Timestamp.valueOf(bd));
-	            ps.setTimestamp(i++, Timestamp.valueOf(kt));
-	            ps.setTimestamp(i, Timestamp.valueOf(bd));
-	            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+	            ps.setString(1, maPhong);
+	            ps.setString(2, maBoQua == null ? "" : maBoQua);
+	            ps.setTimestamp(3, Timestamp.valueOf(kt.plusMinutes(GIO_NGHI_PHUT)));
+	            ps.setInt(4, GIO_NGHI_PHUT);
+	            ps.setTimestamp(5, Timestamp.valueOf(bd));
+	            try (ResultSet rs = ps.executeQuery()) {
+	                return rs.next() ? rs.getString(1) : null;
+	            }
 	        }
 	    }
 
@@ -313,8 +320,10 @@ import dao.SuatChieuDAO;
 	                    }
 
 	                    // Kiểm tra suất chiếu trùng giờ/phòng
-	                    if (biTrungGio(conn, maPhongChieu, null, gioBD, gioKT)) {
-	                        JOptionPane.showMessageDialog(this, "Trùng suất chiếu trong phòng này.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+	                    String trung = timSuatTrung(conn, maPhongChieu, null, gioBD, gioKT);
+	                    if (trung != null) {
+	                        JOptionPane.showMessageDialog(this, "Trùng giờ với suất " + trung + " trong phòng " + maPhongChieu
+	                                + " (các suất phải cách nhau ít nhất " + GIO_NGHI_PHUT + " phút).", "Lỗi", JOptionPane.ERROR_MESSAGE);
 	                        continue;
 	                    }
 
@@ -324,6 +333,7 @@ import dao.SuatChieuDAO;
 	                    if (suatChieuDAO.themSuatChieu(suatChieu)) {
 	                        gheDao.khoiTaoTrangThaiGheChoSuatChieu(suatChieu.getMaSuatChieu(), suatChieu.getPhongChieu().getMaPhongChieu());
 	                        JOptionPane.showMessageDialog(this, "Thêm suất chiếu thành công!");
+	                        hienNgay(gioBD);
 	                        lamMoiDanhSach();
 	                        break;
 	                    } else {
@@ -426,14 +436,17 @@ import dao.SuatChieuDAO;
 
 	            // Kiểm tra trùng suất chiếu trong cùng phòng
 	            try (Connection conn = ConnectDB.getConnection()) {
-	                if (biTrungGio(conn, maPhong, maSuatChieu, gioBD, gioKT)) {
-	                    JOptionPane.showMessageDialog(this, "Suất chiếu bị trùng giờ trong phòng chiếu này.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+	                String trung = timSuatTrung(conn, maPhong, maSuatChieu, gioBD, gioKT);
+	                if (trung != null) {
+	                    JOptionPane.showMessageDialog(this, "Trùng giờ với suất " + trung + " trong phòng " + maPhong
+	                            + " (các suất phải cách nhau ít nhất " + GIO_NGHI_PHUT + " phút).", "Lỗi", JOptionPane.ERROR_MESSAGE);
 	                    return; // Ngưng, không cho sửa
 	                }
 	            }
 
 	            if (suatChieuDAO.suaSuatChieu(updated)) {
 	                JOptionPane.showMessageDialog(this, "Chỉnh sửa suất chiếu thành công.", "Thông Báo", JOptionPane.INFORMATION_MESSAGE);
+	                hienNgay(gioBD);
 	                lamMoiDanhSach();
 	            } else {
 	                JOptionPane.showMessageDialog(this, "Không thể sửa suất chiếu đã phát sinh vé. Hãy xử lý vé liên quan trước.", "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -451,6 +464,11 @@ import dao.SuatChieuDAO;
 	    private static String gioKetThucHienThi(LocalDateTime bd, LocalDateTime kt) {
 	        long ngayLech = ChronoUnit.DAYS.between(bd.toLocalDate(), kt.toLocalDate());
 	        return kt.format(GIO_F) + (ngayLech > 0 ? " (+" + ngayLech + " ngày)" : "");
+	    }
+
+	    /** Chuyển bộ lọc sang ngày của suất vừa thêm/sửa để thấy ngay suất đó trong bảng. */
+	    private void hienNgay(LocalDateTime t) {
+	        dcNgay.setDate(Date.from(t.toLocalDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
 	    }
 
 	    private void lamMoiDanhSach() {

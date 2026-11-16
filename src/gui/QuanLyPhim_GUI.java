@@ -20,6 +20,8 @@ public class QuanLyPhim_GUI extends JPanel {
     private JTextField tfTimKiem;
     private PhimDAO phimDAO;
     private final TheLoaiDAO theLoaiDAO = new TheLoaiDAO();
+    /** Phim đầy đủ (kể cả mô tả, đạo diễn, diễn viên) theo mã, để khung chi tiết bên phải hiển thị. */
+    private final java.util.Map<String, Phim> phimTheoMa = new java.util.HashMap<>();
     private boolean dangNap = false; // đang nạp lại bảng -> không lưu chỉnh sửa tại ô
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(java.time.format.ResolverStyle.STRICT);
     private static final String[] DS_TUOI = {"P", "K", "T13", "T16", "T18"};
@@ -91,13 +93,15 @@ public class QuanLyPhim_GUI extends JPanel {
         });
         JLabel poster = new JLabel("", SwingConstants.CENTER);
         poster.setPreferredSize(new Dimension(170, 240));
-        String[] nhan = {"Tên phim:", "Thể loại:", "Thời lượng:", "Giới hạn tuổi:", "Ngày khởi chiếu:", "Trạng thái:"};
+        String[] nhan = {"Tên phim:", "Thể loại:", "Thời lượng:", "Giới hạn tuổi:", "Ngày khởi chiếu:", "Trạng thái:", "Đạo diễn:", "Diễn viên:", "Mô tả:"};
         JPanel phai = Khung.chiTiet(table, tableModel, poster, nhan, r -> {
             String ma = String.valueOf(tableModel.getValueAt(r, 0));
             poster.setIcon(AppTheme.poster(ma, 170, 240));
-            return new String[]{String.valueOf(tableModel.getValueAt(r, 1)), String.valueOf(tableModel.getValueAt(r, 2)),
+            Phim ct = phimTheoMa.get(ma);
+            return new String[]{wrap(tableModel.getValueAt(r, 1)), wrap(tableModel.getValueAt(r, 2)),
                     tableModel.getValueAt(r, 3) + " phút", String.valueOf(tableModel.getValueAt(r, 4)), String.valueOf(tableModel.getValueAt(r, 5)),
-                    String.valueOf(tableModel.getValueAt(r, 6))};
+                    String.valueOf(tableModel.getValueAt(r, 6)),
+                    wrap(ct == null ? null : ct.getDaoDien()), wrap(ct == null ? null : ct.getDienVien()), wrap(ct == null ? null : ct.getMoTa())};
         });
         Khung.dung(this, "Quản Lý Phim", controlPanel, scrollPane, phai);
 
@@ -105,11 +109,57 @@ public class QuanLyPhim_GUI extends JPanel {
         lamMoiDanhSach();
     }
 
+    /** Bọc chữ trong HTML để nhãn tự xuống dòng khi văn bản dài. */
+    private static String wrap(Object o) {
+        if (o == null || o.toString().trim().isEmpty()) return "";
+        return "<html><div style='width:170px'>" + o + "</div></html>";
+    }
+
+    /** Tạo mỗi thể loại một ô tick; ô nào có tên trong dangChon ("Hành động, Hài") thì tick sẵn. */
+    private List<JCheckBox> taoOTheLoai(String dangChon) {
+        List<JCheckBox> ds = new java.util.ArrayList<>();
+        for (TheLoai tl : theLoaiDAO.layTatCa()) {
+            JCheckBox cb = new JCheckBox(tl.getTenTheLoai());
+            if (dangChon != null && dangChon.contains(tl.getTenTheLoai())) cb.setSelected(true);
+            ds.add(cb);
+        }
+        return ds;
+    }
+
+    /** Đặt các ô tick vào một khung có thanh cuộn. */
+    private static JScrollPane khungTheLoai(List<JCheckBox> ds) {
+        JPanel p = new JPanel(new GridLayout(0, 3));
+        for (JCheckBox cb : ds) p.add(cb);
+        JScrollPane sp = new JScrollPane(p);
+        sp.setPreferredSize(new Dimension(380, 110));
+        return sp;
+    }
+
+    /** Ghép tên các thể loại đã tick thành chuỗi "A, B, C". */
+    private static String theLoaiDaChon(List<JCheckBox> ds) {
+        String kq = "";
+        for (JCheckBox cb : ds) {
+            if (cb.isSelected()) kq = kq.isEmpty() ? cb.getText() : kq + ", " + cb.getText();
+        }
+        return kq;
+    }
+
+    /** Ô nhập mô tả nhiều dòng. */
+    private static JScrollPane khungMoTa(JTextArea ta) {
+        ta.setLineWrap(true);
+        JScrollPane sp = new JScrollPane(ta);
+        sp.setPreferredSize(new Dimension(380, 70));
+        return sp;
+    }
+
     private void themMoiPhim() {
         JTextField tfMaPhim = new JTextField();
         JTextField tfTenPhim = new JTextField();
-        JComboBox<TheLoai> cbTheLoai = taoComboTheLoai(null);
-        if (cbTheLoai.getItemCount() == 0) { thongBaoThieuTheLoai(); return; }
+        List<JCheckBox> dsTheLoai = taoOTheLoai(null);
+        if (dsTheLoai.isEmpty()) { thongBaoThieuTheLoai(); return; }
+        JTextField tfDaoDien = new JTextField();
+        JTextField tfDienVien = new JTextField();
+        JTextArea taMoTa = new JTextArea(3, 30);
         JTextField tfThoiLuong = new JTextField();
         JTextField tfPoster = new JTextField();
         JComboBox<String> cbTrangThai = new JComboBox<>(DS_TT);
@@ -119,7 +169,10 @@ public class QuanLyPhim_GUI extends JPanel {
         Object[] message = {
             "Mã Phim:", tfMaPhim,
             "Tên Phim:", tfTenPhim,
-            "Thể Loại:", cbTheLoai,
+            "Thể Loại (chọn được nhiều):", khungTheLoai(dsTheLoai),
+            "Đạo Diễn:", tfDaoDien,
+            "Diễn Viên (cách nhau dấu phẩy):", tfDienVien,
+            "Mô Tả:", khungMoTa(taMoTa),
             "Thời Lượng (phút):", tfThoiLuong,
             "Ảnh poster (không bắt buộc):", oChonAnh(tfPoster),
             "Giới Hạn Tuổi:", cbTuoi,
@@ -136,7 +189,8 @@ public class QuanLyPhim_GUI extends JPanel {
             if (option == 1) { // Xóa trắng
                 tfMaPhim.setText("");
                 tfTenPhim.setText("");
-                cbTheLoai.setSelectedIndex(-1);
+                for (JCheckBox cb : dsTheLoai) cb.setSelected(false);
+                tfDaoDien.setText(""); tfDienVien.setText(""); taMoTa.setText("");
                 tfThoiLuong.setText("");
                 tfPoster.setText("");
                 cbTuoi.setSelectedIndex(0); dcNgay.setDate(null);
@@ -149,8 +203,7 @@ public class QuanLyPhim_GUI extends JPanel {
             try {
                 String maPhim = tfMaPhim.getText().trim();
                 String tenPhim = tfTenPhim.getText().trim();
-                TheLoai tlChon = (TheLoai) cbTheLoai.getSelectedItem();
-                String theLoai = tlChon == null ? "" : tlChon.getTenTheLoai();
+                String theLoai = theLoaiDaChon(dsTheLoai);
                 String thoiLuongStr = tfThoiLuong.getText().trim();
                 String trangThai = (String) cbTrangThai.getSelectedItem();
                 String tuoi = (String) cbTuoi.getSelectedItem();
@@ -173,7 +226,7 @@ public class QuanLyPhim_GUI extends JPanel {
                 }
 
                 if (theLoai.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Vui lòng chọn thể loại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Vui lòng chọn ít nhất một thể loại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     continue;
                 }
 
@@ -197,7 +250,8 @@ public class QuanLyPhim_GUI extends JPanel {
                     continue;
                 }
 
-                Phim phim = new Phim(maPhim, tenPhim, theLoai, thoiLuong, trangThai, "", "", "", tuoi, ngayChieu);
+                Phim phim = new Phim(maPhim, tenPhim, theLoai, thoiLuong, trangThai, taMoTa.getText().trim(),
+                        tfDaoDien.getText().trim(), tfDienVien.getText().trim(), tuoi, ngayChieu);
                 boolean success = phimDAO.themPhim(phim);
                 if (success) {
                     luuAnh(maPhim, tfPoster.getText().trim());
@@ -226,12 +280,15 @@ public class QuanLyPhim_GUI extends JPanel {
         selectedRow = table.convertRowIndexToModel(selectedRow);
         String maPhim = tableModel.getValueAt(selectedRow, 0).toString();
         JTextField tfTenPhim = new JTextField(tableModel.getValueAt(selectedRow, 1).toString());
-        JComboBox<TheLoai> cbTheLoai = taoComboTheLoai(String.valueOf(tableModel.getValueAt(selectedRow, 2)));
-        if (cbTheLoai.getItemCount() == 0) { thongBaoThieuTheLoai(); return; }
+        List<JCheckBox> dsTheLoai = taoOTheLoai(String.valueOf(tableModel.getValueAt(selectedRow, 2)));
+        if (dsTheLoai.isEmpty()) { thongBaoThieuTheLoai(); return; }
         JTextField tfThoiLuong = new JTextField(tableModel.getValueAt(selectedRow, 3).toString());
         JComboBox<String> cbTrangThai = new JComboBox<>(new String[]{"Sắp Chiếu", "Đang Chiếu", "Ngừng Chiếu"});
         JTextField tfPoster = new JTextField();
-        Phim cu = phimDAO.layPhimTheoMa(maPhim); // giữ nguyên mô tả, đạo diễn, diễn viên khi sửa
+        Phim cu = phimDAO.layPhimTheoMa(maPhim);
+        JTextField tfDaoDien = new JTextField(cu == null || cu.getDaoDien() == null ? "" : cu.getDaoDien());
+        JTextField tfDienVien = new JTextField(cu == null || cu.getDienVien() == null ? "" : cu.getDienVien());
+        JTextArea taMoTa = new JTextArea(cu == null || cu.getMoTa() == null ? "" : cu.getMoTa(), 3, 30);
         cbTrangThai.setSelectedItem(tableModel.getValueAt(selectedRow, 6).toString());
         JComboBox<String> cbTuoi = new JComboBox<>(DS_TUOI);
         if (cu != null && cu.getGioiHanTuoi() != null) cbTuoi.setSelectedItem(cu.getGioiHanTuoi());
@@ -240,7 +297,10 @@ public class QuanLyPhim_GUI extends JPanel {
 
         Object[] message = {
             "Tên Phim:", tfTenPhim,
-            "Thể Loại:", cbTheLoai,
+            "Thể Loại (chọn được nhiều):", khungTheLoai(dsTheLoai),
+            "Đạo Diễn:", tfDaoDien,
+            "Diễn Viên (cách nhau dấu phẩy):", tfDienVien,
+            "Mô Tả:", khungMoTa(taMoTa),
             "Thời Lượng:", tfThoiLuong,
             "Ảnh poster (bỏ trống = giữ nguyên):", oChonAnh(tfPoster),
             "Giới Hạn Tuổi:", cbTuoi,
@@ -256,8 +316,7 @@ public class QuanLyPhim_GUI extends JPanel {
         }
 
         String tenPhim = tfTenPhim.getText().trim();
-        TheLoai tlChon = (TheLoai) cbTheLoai.getSelectedItem();
-        String theLoai = tlChon == null ? "" : tlChon.getTenTheLoai();
+        String theLoai = theLoaiDaChon(dsTheLoai);
         String thoiLuongStr = tfThoiLuong.getText().trim();
 
         // === RÀNG BUỘC ===
@@ -268,7 +327,7 @@ public class QuanLyPhim_GUI extends JPanel {
         }
 
         if (theLoai.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn thể loại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn ít nhất một thể loại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
             chinhSuaPhim();
             return;
         }
@@ -298,7 +357,7 @@ public class QuanLyPhim_GUI extends JPanel {
                 return;
             }
             Phim phim = new Phim(maPhim, tenPhim, theLoai, thoiLuong, trangThai,
-                    cu == null ? "" : cu.getMoTa(), cu == null ? "" : cu.getDaoDien(), cu == null ? "" : cu.getDienVien(),
+                    taMoTa.getText().trim(), tfDaoDien.getText().trim(), tfDienVien.getText().trim(),
                     (String) cbTuoi.getSelectedItem(), ngayChieu);
             boolean success = phimDAO.suaPhimVaTheLoai(phim);
             if (success) {
@@ -314,22 +373,6 @@ public class QuanLyPhim_GUI extends JPanel {
         }
     }
 
-
-    /**
-     * Combobox thể loại lấy từ bảng TheLoai (TL001, TL002, ...).
-     * tenDangChon: tên thể loại hiện tại của phim (nếu phim có nhiều thể loại thì lấy cái đầu); null/rỗng = chưa chọn.
-     */
-    private JComboBox<TheLoai> taoComboTheLoai(String tenDangChon) {
-        JComboBox<TheLoai> cb = new JComboBox<>(theLoaiDAO.layTatCa().toArray(new TheLoai[0]));
-        cb.setSelectedIndex(-1);
-        if (tenDangChon != null && !tenDangChon.isBlank()) {
-            String dau = tenDangChon.split(", ")[0].trim();
-            for (int i = 0; i < cb.getItemCount(); i++) {
-                if (cb.getItemAt(i).getTenTheLoai().equalsIgnoreCase(dau)) { cb.setSelectedIndex(i); break; }
-            }
-        }
-        return cb;
-    }
 
     private void thongBaoThieuTheLoai() {
         JOptionPane.showMessageDialog(this, "Không đọc được danh sách thể loại.\n"
@@ -421,7 +464,9 @@ public class QuanLyPhim_GUI extends JPanel {
         dangNap = true;
         try {
             tableModel.setRowCount(0);
+            phimTheoMa.clear();
             for (Phim p : ds) {
+                phimTheoMa.put(p.getMaPhim(), p);
                 tableModel.addRow(new Object[]{p.getMaPhim(), p.getTenPhim(), p.getTheLoai(), p.getThoiLuong(),
                         p.getGioiHanTuoi() == null ? "" : p.getGioiHanTuoi(), p.getNgayKhoiChieu() == null ? "" : p.getNgayKhoiChieu().format(NGAY), p.getTrangThai()});
             }

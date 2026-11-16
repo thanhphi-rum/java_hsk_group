@@ -32,20 +32,24 @@ public class PhimDAO {
         }
     }
 
-    /** Ghi thể loại của phim vào Phim_TheLoai: xóa thể loại cũ rồi thêm thể loại đã chọn. */
+    /** Ghi thể loại của phim: xóa thể loại cũ rồi thêm từng thể loại đã chọn (tenTheLoai dạng "Hành động, Hài"). */
     private void ghiTheLoai(Connection conn, String maPhim, String tenTheLoai) throws SQLException {
-        String ma = maTheLoai(conn, tenTheLoai);
-        if (ma == null) {
-            throw new SQLException("Thể loại \"" + tenTheLoai + "\" không có trong bảng TheLoai");
-        }
+        // Xóa thể loại cũ
         try (PreparedStatement xoa = conn.prepareStatement("DELETE FROM Phim_TheLoai WHERE MaPhim = ?")) {
             xoa.setString(1, maPhim);
             xoa.executeUpdate();
         }
-        try (PreparedStatement them = conn.prepareStatement("INSERT INTO Phim_TheLoai (MaPhim, MaTheLoai) VALUES (?, ?)")) {
-            them.setString(1, maPhim);
-            them.setString(2, ma);
-            them.executeUpdate();
+        // Thêm từng thể loại mới
+        for (String ten : tenTheLoai.split(", ")) {
+            String ma = maTheLoai(conn, ten);
+            if (ma == null) {
+                throw new SQLException("Thể loại \"" + ten + "\" không có trong bảng TheLoai");
+            }
+            try (PreparedStatement them = conn.prepareStatement("INSERT INTO Phim_TheLoai (MaPhim, MaTheLoai) VALUES (?, ?)")) {
+                them.setString(1, maPhim);
+                them.setString(2, ma);
+                them.executeUpdate();
+            }
         }
     }
 

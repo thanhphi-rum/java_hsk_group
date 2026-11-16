@@ -1,27 +1,12 @@
-﻿/*
-    QUẢN LÝ BÁN VÉ RẠP PHIM - SQL SERVER
-    Bản khởi tạo đơn giản, dùng cho database CHƯA TỒN TẠI.
-
-    Cách chạy: mở file trong SSMS, chọn toàn bộ (Ctrl+A), nhấn F5.
-    Nếu database đã có, script báo lỗi và bỏ qua phần bên dưới.
-    Không dùng file này để nâng cấp database cũ.
-
-    Nội dung: 1. Tạo database  2. Tạo bảng  3. Chỉ mục
-              4. Dữ liệu mẫu  5. Các view tính tiền  6. Kiểm tra
-    Nếu dừng chạy giữa chừng khi NOEXEC đang bật, chạy riêng: SET NOEXEC OFF;
-*/
-
+﻿
 -- 1. TẠO DATABASE
 USE master;
 GO
-
--- Chặn chạy đè lên database đang có dữ liệu.
--- NOEXEC ON: chỉ kiểm tra câu lệnh, không thực hiện các lệnh phía sau.
 IF DB_ID(N'QuanLyBanVePhimMoi') IS NOT NULL
 BEGIN
-    RAISERROR(N'Database QuanLyBanVePhimMoi đã tồn tại. Script dừng, không sửa dữ liệu cũ. Hãy dùng một tên database mới nếu muốn chạy thử.', 16, 1);
-    SET NOEXEC ON;
-END;
+    ALTER DATABASE QuanLyBanVePhimMoi SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE QuanLyBanVePhimMoi;
+END
 GO
 
 CREATE DATABASE QuanLyBanVePhimMoi;
@@ -137,7 +122,9 @@ CREATE TABLE Phim (
     GioiHanTuoi   NVARCHAR(20)  NULL,
     NgayKhoiChieu DATE          NULL,
     CONSTRAINT PK_Phim PRIMARY KEY (MaPhim),
-    CONSTRAINT CK_Phim_ThoiLuong CHECK (ThoiLuong > 0)
+    CONSTRAINT CK_Phim_ThoiLuong CHECK (ThoiLuong > 0),
+    CONSTRAINT CK_Phim_TrangThai CHECK (TrangThai IN (N'Sắp Chiếu', N'Đang Chiếu', N'Ngừng Chiếu')),
+    CONSTRAINT CK_Phim_GioiHanTuoi CHECK (GioiHanTuoi IN (N'P', N'K', N'T13', N'T16', N'T18'))
 );
 
 -- Phim_TheLoai(maPhim, maTheLoai): một phim có thể thuộc nhiều thể loại, một thể loại có nhiều phim.
@@ -377,18 +364,26 @@ INSERT INTO TheLoai (MaTheLoai, TenTheLoai, MoTa) VALUES
 ('TL020', N'Lịch sử', N'Phim lịch sử');
 -- Phim: giữ mã có sẵn để khớp phần gán ảnh trong Java.
 INSERT INTO Phim (MaPhim, TenPhim, ThoiLuong, TrangThai, MoTa, DaoDien, DienVien, GioiHanTuoi, NgayKhoiChieu) VALUES
-('1', N'Avengers Endgame', 181, N'Đang Chiếu', N'', N'', N'', N'T13', '2026-01-10'),
-('2', N'Frozen 2',         103, N'Đang Chiếu', N'', N'', N'', N'P',   '2026-02-01'),
-('3', N'Joker',            122, N'Đang Chiếu', N'', N'', N'', N'T18', '2026-02-15'),
-('4', N'Spider Man',       148, N'Đang Chiếu', N'', N'', N'', N'T13', '2026-03-01'),
-('5', N'The Lion King',    118, N'Đang Chiếu', N'', N'', N'', N'P',   '2026-03-20'),
-('6', N'Doraemon',         108, N'Đang Chiếu', N'', N'', N'', N'P',   '2026-04-01'),
-('7', N'Kamen Rider',       90, N'Sắp Chiếu',  N'', N'', N'', N'T13', '2026-12-01'),
+('1', N'Avengers Endgame', 181, N'Đang Chiếu', N'Sau cú búng tay của Thanos, các Avengers còn lại tập hợp để đảo ngược thảm họa và khôi phục vũ trụ.', N'Anthony Russo, Joe Russo', N'Robert Downey Jr., Chris Evans, Mark Ruffalo, Chris Hemsworth, Scarlett Johansson', N'T13', '2026-01-10'),
+('2', N'Frozen 2',         103, N'Đang Chiếu', N'Elsa cùng Anna, Kristoff và Olaf lên đường tìm nguồn gốc sức mạnh băng giá và bí ẩn của khu rừng bị phù phép.', N'Chris Buck, Jennifer Lee', N'Idina Menzel, Kristen Bell, Jonathan Groff, Josh Gad', N'P',   '2026-02-01'),
+('3', N'Joker',            122, N'Đang Chiếu', N'Câu chuyện về Arthur Fleck, một diễn viên hài thất bại bị xã hội ruồng bỏ và dần trở thành tên tội phạm khét tiếng Joker.', N'Todd Phillips', N'Joaquin Phoenix, Robert De Niro, Zazie Beetz', N'T18', '2026-02-15'),
+('4', N'Spider Man',       148, N'Đang Chiếu', N'Peter Parker cân bằng cuộc sống học sinh với trách nhiệm người hùng khi danh tính bị phơi bày và các kẻ thù từ đa vũ trụ xuất hiện.', N'Jon Watts', N'Tom Holland, Zendaya, Benedict Cumberbatch', N'T13', '2026-03-01'),
+('5', N'The Lion King',    118, N'Đang Chiếu', N'Chú sư tử con Simba phải trốn chạy sau cái chết của vua cha Mufasa, rồi trưởng thành và trở về giành lại ngai vàng.', N'Jon Favreau', N'Donald Glover, Beyoncé, Seth Rogen, Chiwetel Ejiofor', N'P',   '2026-03-20'),
+('6', N'Doraemon',         108, N'Đang Chiếu', N'Chú mèo máy Doraemon cùng Nobita và các bạn bước vào chuyến phiêu lưu mới với những bảo bối thần kỳ.', N'Shinnosuke Yakuwa', N'Wasabi Mizuta, Megumi Ohara, Yumi Kakazu', N'P',   '2026-04-01'),
+('7', N'Kamen Rider',       90, N'Sắp Chiếu',  N'Những chiến binh Kamen Rider bảo vệ nhân loại trước các thế lực xâm lược trong trận chiến mới.', N'Koichi Sakamoto', N'Ryo Yoshizawa, Rina Takeda', N'T13', '2026-12-01'),
 ('8', N'Ngày Con Còn Mẹ', 107, N'Đang Chiếu', N'Bộ phim gia đình xúc động về tình mẹ và những người con trưởng thành, nhắc ta trân trọng từng ngày còn được ở bên mẹ.', N'Vũ Ngọc Đãng', N'Hồng Đào, Phương Anh Đào, Huy Anh, Ma Ran Đô, Quỳnh Lương', N'T13', '2026-11-11'),
 ('9', N'Godzilla Trừ Không', 135, N'Đang Chiếu', N'Nước Nhật hoang tàn sau chiến tranh phải đối mặt với sự xuất hiện của quái vật Godzilla. Người dân tự đứng lên chống lại thảm họa khi không còn gì để mất.', N'Takashi Yamazaki', N'Ryunosuke Kamiki, Minami Hamabe', N'T13', '2026-11-06');
--- Thể loại của từng phim (giao diện chọn 1 thể loại/phim; bảng vẫn cho phép nhiều thể loại)
+-- Thể loại của từng phim: quan hệ nhiều-nhiều, mỗi phim có thể có nhiều thể loại (giao diện cho tick chọn nhiều thể loại)
 INSERT INTO Phim_TheLoai (MaPhim, MaTheLoai) VALUES
-('1', 'TL001'), ('2', 'TL003'), ('3', 'TL007'), ('4', 'TL001'), ('5', 'TL003'), ('6', 'TL003'), ('7', 'TL001'), ('8', 'TL014'), ('9', 'TL001');
+('1', 'TL001'), ('1', 'TL008'),
+('2', 'TL003'), ('2', 'TL002'), ('2', 'TL017'),
+('3', 'TL007'), ('3', 'TL011'),
+('4', 'TL001'), ('4', 'TL008'),
+('5', 'TL003'), ('5', 'TL014'),
+('6', 'TL003'), ('6', 'TL002'), ('6', 'TL014'),
+('7', 'TL001'),
+('8', 'TL014'), ('8', 'TL010'),
+('9', 'TL001'), ('9', 'TL008');
 -- Phòng chiếu
 INSERT INTO PhongChieu (MaPhongChieu, TenPhongChieu, LoaiPhongChieu, TrangThai, SucChua) VALUES
 ('P01', N'Phòng 1', N'2D', N'Hoạt động', 100),
