@@ -21,11 +21,12 @@ public class Menu_GUI extends JPanel {
     public static final String QL_KHACH_HANG = "Quản lý Khách Hàng";
     public static final String QL_NHAN_VIEN = "Quản lý Nhân Viên";
     public static final String QL_TAI_KHOAN = "Quản lý Tài Khoản";
+    public static final String QL_COMBO = "Quản lý Combo";
     public static final String QL_KHUYEN_MAI = "Quản lý Khuyến Mãi";
     public static final String THONG_KE = "Thống Kê";
 
     private static final String[] MUC = {TRANG_CHU, PHIM, HOA_DON, PHIEU_DAT, QL_PHIM, QL_SUAT_CHIEU,
-            QL_KHACH_HANG, QL_NHAN_VIEN, QL_TAI_KHOAN, QL_KHUYEN_MAI, THONG_KE};
+            QL_KHACH_HANG, QL_NHAN_VIEN, QL_TAI_KHOAN, QL_COMBO, QL_KHUYEN_MAI, THONG_KE};
 
     private final Map<String, NavButton> nutMenu = new LinkedHashMap<>();
     private final JLabel lblTen = new JLabel(" ");
@@ -133,6 +134,7 @@ public class Menu_GUI extends JPanel {
         if (QL_KHACH_HANG.equals(ten)) return "♙";
         if (QL_NHAN_VIEN.equals(ten)) return "♟";
         if (QL_TAI_KHOAN.equals(ten)) return "⚙";
+        if (QL_COMBO.equals(ten)) return "▧";
         if (QL_KHUYEN_MAI.equals(ten)) return "％";
         return "▥";
     }
@@ -145,7 +147,7 @@ public class Menu_GUI extends JPanel {
     /** Mục chỉ dành cho quản lý. */
     public static boolean laMucQuanTri(String ten) {
         return ten.equals(QL_PHIM) || ten.equals(QL_SUAT_CHIEU) || ten.equals(QL_NHAN_VIEN)
-                || ten.equals(QL_TAI_KHOAN) || ten.equals(QL_KHUYEN_MAI) || ten.equals(THONG_KE);
+                || ten.equals(QL_TAI_KHOAN) || ten.equals(QL_COMBO) || ten.equals(QL_KHUYEN_MAI) || ten.equals(THONG_KE);
     }
 
     public void setNguoiDung(TaiKhoan tk) {

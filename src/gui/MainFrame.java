@@ -202,6 +202,7 @@ public class MainFrame extends JFrame {
             case Menu_GUI.QL_KHACH_HANG:  return new QuanLyKhachHang_GUI();
             case Menu_GUI.QL_NHAN_VIEN:   return new QuanLyNhanVien_GUI();
             case Menu_GUI.QL_TAI_KHOAN:   return new QuanLyTaiKhoan_GUI();
+            case Menu_GUI.QL_COMBO:       return new QuanLyCombo_GUI();
             case Menu_GUI.QL_KHUYEN_MAI: return new QuanLyKhuyenMai_GUI();
             case Menu_GUI.THONG_KE:       return new ThongKe_GUI();
             default:                      return new TrangChu_GUI();
