@@ -10,14 +10,14 @@ import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.util.TreeSet;
 
-/** Bước thu tiền tại quầy, mỗi phương thức một cách: tiền mặt (tính tiền thừa) và chuyển khoản (mã VietQR). */
+// Bước thu tiền tại quầy, mỗi phương thức một cách: tiền mặt (tính tiền thừa) và chuyển khoản (mã VietQR)
 public final class ThuTienDialog {
     private static final Color XANH = new Color(0x4CD97B);
     private static final Color DO = new Color(0xFF6B6B);
 
-    /** Kết quả khi nhân viên xác nhận đã thu tiền. */
+    // Kết quả khi nhân viên xác nhận đã thu tiền
     public static final class KetQua {
-        /** Số tiền khách đưa; chỉ có khi trả tiền mặt, các phương thức khác là null. */
+        // Số tiền khách đưa; chỉ có khi trả tiền mặt, các phương thức khác là null
         public final Double tienKhachDua;
 
         KetQua(Double tienKhachDua) { this.tienKhachDua = tienKhachDua; }
@@ -25,13 +25,13 @@ public final class ThuTienDialog {
 
     private ThuTienDialog() { }
 
-    /** @return kết quả khi đã thu tiền, hoặc null nếu nhân viên hủy. */
+    // return kết quả khi đã thu tiền, hoặc null nếu nhân viên hủy
     public static KetQua hienThi(Component parent, String phuongThuc, double soTien, String maHD) {
         if (PhuongThucThanhToan.TIEN_MAT.equals(phuongThuc)) return thuTienMat(parent, soTien);
         return thuChuyenKhoan(parent, soTien, maHD);
     }
 
-    // ------------------------------------------------------------ tiền mặt
+    // tiền mặt
     private static KetQua thuTienMat(Component parent, double soTien) {
         JDialog d = taoHopThoai(parent, "Thu tiền mặt");
         JPanel pn = noiDung(d);
@@ -84,7 +84,7 @@ public final class ThuTienDialog {
         return chay(d, parent, pn, ok, huy, kq);
     }
 
-    /** Các mệnh giá khách thường đưa (làm tròn lên 10k/50k/100k/200k/500k), lớn hơn số tiền cần thu. */
+    // Các mệnh giá khách thường đưa (làm tròn lên 10k/50k/100k/200k/500k), lớn hơn số tiền cần thu
     private static long[] menhGiaGoiY(long soTien) {
         TreeSet<Long> ds = new TreeSet<>();
         for (long buoc : new long[]{10_000, 50_000, 100_000, 200_000, 500_000}) {

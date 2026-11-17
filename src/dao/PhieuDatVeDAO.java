@@ -187,6 +187,15 @@ public class PhieuDatVeDAO {
         }
     }
 
+    /** Chuyển phiếu từ "Chờ xác nhận" sang "Đã xác nhận". */
+    public void xacNhanPhieu(Connection conn, String maPhieuDatVe) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE PhieuDatVe SET TrangThai=N'Đã xác nhận' WHERE MaPhieuDatVe=? AND TrangThai=N'Chờ xác nhận'")) {
+            ps.setString(1, maPhieuDatVe);
+            if (ps.executeUpdate() != 1) throw new SQLException("Chỉ xác nhận được phiếu đang chờ xác nhận; hãy tải lại danh sách");
+        }
+    }
+
     private PhieuDatVe docPhieu(ResultSet rs) throws SQLException {
         Timestamp ngay = rs.getTimestamp("NgayDat");
         String maKhach = rs.getString("MaKhachHang");

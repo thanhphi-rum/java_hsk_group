@@ -1,7 +1,9 @@
 package gui;
 
 import connect.ConnectDB;
+import dao.HoaDonDAO;
 import dao.PhieuDatVeDAO;
+import entity.HoaDon;
 import entity.ChiTietPhieuDatVe;
 import entity.KhachHang;
 import entity.PhieuDatVe;
@@ -46,6 +48,10 @@ public class QuanLyPhieuDat_GUI extends JPanel {
     };
     private final JTable table = new JTable(model);
     private final JTextArea txtChiTiet = new JTextArea();
+    private final HoaDonDAO hoaDonDAO = new HoaDonDAO();
+    private final JButton btnXacNhan = new JButton("Xác nhận");
+    private final JButton btnThanhToan = new JButton("Thanh toán");
+    private final JButton btnIn = new JButton("In phiếu");
     private final JButton btnHuy = new JButton("Hủy phiếu");
     private final List<PhieuDatVe> danhSach = new ArrayList<>();
 
@@ -66,9 +72,14 @@ public class QuanLyPhieuDat_GUI extends JPanel {
         spChiTiet.setOpaque(false);
         spChiTiet.getViewport().setOpaque(false);
         AppTheme.Card phai = new AppTheme.Card(new BorderLayout(0, 10));
-        phai.setPreferredSize(new java.awt.Dimension(340, 0));
+        phai.setPreferredSize(new java.awt.Dimension(300, 0));
         phai.add(AppTheme.label("Chi tiết phiếu", Font.BOLD, 16, Color.WHITE), BorderLayout.NORTH);
         phai.add(spChiTiet, BorderLayout.CENTER);
+        JPanel chanPhai = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        chanPhai.setOpaque(false);
+        btnIn.setPreferredSize(new java.awt.Dimension(110, 36));
+        chanPhai.add(btnIn);
+        phai.add(chanPhai, BorderLayout.SOUTH);
 
         // Ô tìm + nút Tìm Kiếm lên đầu thẻ, các nút còn lại xuống cuối thẻ (do Khung.dung tách)
         JPanel dieuKhien = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
@@ -76,11 +87,19 @@ public class QuanLyPhieuDat_GUI extends JPanel {
         JButton btnTim = new JButton("Tìm Kiếm");
         btnTim.addActionListener(e -> taiDanhSach());
         dieuKhien.add(btnTim);
+        dieuKhien.add(btnXacNhan);
+        dieuKhien.add(btnThanhToan);
         dieuKhien.add(btnHuy);
         JButton btnTaiLai = new JButton("Làm mới");
         btnTaiLai.addActionListener(e -> { tfTim.setText(""); cbTrangThai.setSelectedIndex(0); taiDanhSach(); });
         dieuKhien.add(btnTaiLai);
+        btnXacNhan.setEnabled(false);
+        btnThanhToan.setEnabled(false);
+        btnIn.setEnabled(false);
         btnHuy.setEnabled(false);
+        btnXacNhan.addActionListener(e -> xacNhanPhieu());
+        btnThanhToan.addActionListener(e -> thanhToanPhieu());
+        btnIn.addActionListener(e -> inPhieu());
         btnHuy.addActionListener(e -> huyPhieu());
 
         JPanel loc = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
@@ -105,7 +124,7 @@ public class QuanLyPhieuDat_GUI extends JPanel {
         model.setRowCount(0);
         danhSach.clear();
         txtChiTiet.setText("");
-        btnHuy.setEnabled(false);
+        capNhatNut(null);
         String trangThai = cbTrangThai.getSelectedItem() == null || TAT_CA.equals(cbTrangThai.getSelectedItem())
                 ? null : cbTrangThai.getSelectedItem().toString();
         try {
@@ -128,10 +147,19 @@ public class QuanLyPhieuDat_GUI extends JPanel {
         return row < 0 ? null : danhSach.get(table.convertRowIndexToModel(row));
     }
 
+    private void capNhatNut(PhieuDatVe phieu) {
+        String tt = phieu == null ? null : phieu.getTrangThai();
+        boolean choXacNhan = CHO_XAC_NHAN.equals(tt);
+        boolean conHieuLuc = choXacNhan || "Đã xác nhận".equals(tt);
+        btnXacNhan.setEnabled(choXacNhan);
+        btnThanhToan.setEnabled(conHieuLuc);
+        btnHuy.setEnabled(conHieuLuc);
+        btnIn.setEnabled(phieu != null);
+    }
+
     private void hienChiTiet() {
         PhieuDatVe phieu = phieuDangChon();
-        btnHuy.setEnabled(phieu != null && (CHO_XAC_NHAN.equals(phieu.getTrangThai())
-                || "Đã xác nhận".equals(phieu.getTrangThai())));
+        capNhatNut(phieu);
         if (phieu == null) {
             txtChiTiet.setText("");
             return;
@@ -184,6 +212,66 @@ public class QuanLyPhieuDat_GUI extends JPanel {
             taiDanhSach();
         } catch (SQLException ex) {
             JOptionPane.showMessageDialog(this, "Không thể hủy phiếu: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void xacNhanPhieu() {
+        PhieuDatVe phieu = phieuDangChon();
+        if (phieu == null) return;
+        try (Connection conn = ConnectDB.getConnection()) {
+            if (conn == null) throw new SQLException("Không có kết nối tới cơ sở dữ liệu");
+            dao.xacNhanPhieu(conn, phieu.getMaPhieuDatVe());
+            taiDanhSach();
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Không xác nhận được phiếu: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void thanhToanPhieu() {
+        PhieuDatVe phieu = phieuDangChon();
+        if (phieu == null) return;
+        String maPhieu = phieu.getMaPhieuDatVe();
+        double tong;
+        try {
+            tong = hoaDonDAO.layTongPhieuChoThanhToan(maPhieu);
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Không đọc được phiếu: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (MainFrame.getInstance() == null || MainFrame.getInstance().getTaiKhoan() == null) return;
+        JComboBox<String> pay = new JComboBox<>(util.PhuongThucThanhToan.TAT_CA);
+        if (JOptionPane.showConfirmDialog(this, pay, "Chọn phương thức thanh toán", JOptionPane.OK_CANCEL_OPTION)
+                != JOptionPane.OK_OPTION) return;
+        HoaDon hd = new HoaDon("HD" + System.currentTimeMillis(),
+                MainFrame.getInstance().getTaiKhoan().getNhanVien(), null, null,
+                java.time.LocalDateTime.now(), tong, String.valueOf(pay.getSelectedItem()));
+        ThuTienDialog.KetQua thu = ThuTienDialog.hienThi(this, hd.getPhongThucThanhToan(), tong, hd.getMaHoaDon());
+        if (thu == null) return;
+        try (Connection conn = ConnectDB.getConnection()) {
+            if (conn == null) throw new SQLException("Không có kết nối tới cơ sở dữ liệu");
+            conn.setAutoCommit(false);
+            try {
+                hoaDonDAO.thanhToanPhieuDat(conn, hd, maPhieu);
+                conn.commit();
+                JOptionPane.showMessageDialog(this, "Đã thanh toán phiếu và lập hóa đơn " + hd.getMaHoaDon());
+                taiDanhSach();
+            } catch (SQLException ex) {
+                conn.rollback();
+                JOptionPane.showMessageDialog(this, "Thanh toán thất bại; giao dịch đã rollback: " + ex.getMessage()
+                        + "\nNếu đã nhận tiền, hãy trả lại khách hoặc thanh toán lại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Không lưu được hóa đơn: " + ex.getMessage()
+                    + "\nNếu đã nhận tiền, hãy trả lại khách hoặc thanh toán lại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void inPhieu() {
+        if (phieuDangChon() == null) return;
+        try {
+            txtChiTiet.print();
+        } catch (java.awt.print.PrinterException ex) {
+            JOptionPane.showMessageDialog(this, "Không in được: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 }
