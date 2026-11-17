@@ -10,7 +10,6 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
-import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.text.NumberFormat;
 import java.text.Normalizer;
@@ -28,7 +27,7 @@ public class QuanLyCombo_GUI extends JPanel {
     private final DefaultTableModel model = new DefaultTableModel(
             new String[]{"Mã combo", "Tên combo", "Giá bán (VNĐ)", "Trạng thái", "Mô tả"}, 0) {
         @Override public boolean isCellEditable(int row, int col) { return false; }
-        @Override public Class<?> getColumnClass(int col) { return col == 2 ? BigDecimal.class : String.class; }
+        @Override public Class<?> getColumnClass(int col) { return col == 2 ? Double.class : String.class; }
     };
     private final JTable table = new JTable(model);
     private final TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
@@ -51,7 +50,7 @@ public class QuanLyCombo_GUI extends JPanel {
         table.getColumnModel().getColumn(3).setPreferredWidth(120);
         table.getColumnModel().getColumn(3).setCellRenderer(new AppTheme.PillRenderer());
         table.getColumnModel().removeColumn(table.getColumnModel().getColumn(4));
-        table.setDefaultRenderer(BigDecimal.class, new DefaultTableCellRenderer() {
+        table.setDefaultRenderer(Double.class, new DefaultTableCellRenderer() {
             @Override protected void setValue(Object value) {
                 setHorizontalAlignment(SwingConstants.RIGHT);
                 setText(value == null ? "" : tien.format(value));
@@ -150,7 +149,7 @@ public class QuanLyCombo_GUI extends JPanel {
     private void moForm(ComboBapNuoc cu) {
         JTextField ma = new JTextField(cu == null ? "" : cu.getMaCombo(), 24);
         JTextField ten = new JTextField(cu == null ? "" : cu.getTenCombo(), 24);
-        JTextField gia = new JTextField(cu == null ? "" : cu.getGiaBan().stripTrailingZeros().toPlainString(), 24);
+        JTextField gia = new JTextField(cu == null ? "" : (cu.getGiaBan() == (long) cu.getGiaBan() ? String.valueOf((long) cu.getGiaBan()) : String.valueOf(cu.getGiaBan())), 24);
         JTextArea moTa = new JTextArea(cu == null ? "" : cu.getMoTa(), 3, 24);
         moTa.setLineWrap(true); moTa.setWrapStyleWord(true);
         JComboBox<String> status = new JComboBox<>(new String[]{ComboBapNuocDAO.DANG_BAN, ComboBapNuocDAO.NGUNG_BAN});
@@ -166,7 +165,7 @@ public class QuanLyCombo_GUI extends JPanel {
                     throw new IllegalArgumentException("Giá bán phải là số không âm, tối đa 2 chữ số thập phân. Nhập ví dụ 85000 hoặc 85000.50.");
                 }
                 ComboBapNuoc moi = new ComboBapNuoc(ma.getText().trim(), ten.getText().trim(),
-                        new BigDecimal(giaNhap), moTa.getText().trim(), (String) status.getSelectedItem());
+                        Double.parseDouble(giaNhap), moTa.getText().trim(), (String) status.getSelectedItem());
                 ComboBapNuocDAO.kiemTraDuLieu(moi);
                 boolean daLuu = cu == null ? dao.themCombo(moi) : dao.suaCombo(moi);
                 if (!daLuu) {

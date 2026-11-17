@@ -1,7 +1,6 @@
 package dao;
 
 import java.sql.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +15,7 @@ public class HoaDonDAO {
     private HoaDon taoHoaDon(ResultSet rs)throws SQLException{
         String kh=rs.getString("MaKhachHang"),km=rs.getString("MaKhuyenMai");
         Timestamp ts=rs.getTimestamp("NgayLap");
-        HoaDon h=new HoaDon(rs.getString("MaHoaDon"),new NhanVien(rs.getString("MaNhanVien")),kh==null?null:new KhachHang(kh),km==null?null:new KhuyenMai(km),ts==null?null:ts.toLocalDateTime(),rs.getBigDecimal("TongTien").doubleValue(),rs.getString("PhuongThucThanhToan"));
+        HoaDon h=new HoaDon(rs.getString("MaHoaDon"),new NhanVien(rs.getString("MaNhanVien")),kh==null?null:new KhachHang(kh),km==null?null:new KhuyenMai(km),ts==null?null:ts.toLocalDateTime(),rs.getDouble("TongTien"),rs.getString("PhuongThucThanhToan"));
         if(h.getKhuyenMai()!=null){
             h.getKhuyenMai().setPhanTramGiam(rs.getDouble("PhanTramGiamApDung"));
             h.getKhuyenMai().setHinhThuc(rs.getString("HinhThucApDung"));
@@ -29,7 +28,7 @@ public class HoaDonDAO {
     }
     /** Read the applied promotion once, then persist its immutable invoice snapshot. */
     public boolean themHoaDon(Connection c,HoaDon h)throws SQLException{
-        BigDecimal phanTram=BigDecimal.ZERO;
+        double phanTram=0;
         String hinhThuc=KhuyenMai.HT_HOA_DON;
         int soComboTang=0;
         if(h.getKhuyenMai()!=null){
@@ -39,7 +38,7 @@ public class HoaDonDAO {
                 p.setString(1,h.getKhuyenMai().getMaKhuyenMai());
                 try(ResultSet r=p.executeQuery()){
                     if(!r.next())throw new SQLException("Khuyến mãi không còn hiệu lực");
-                    phanTram=r.getBigDecimal("PhanTramGiam");
+                    phanTram=r.getDouble("PhanTramGiam");
                     hinhThuc=r.getString("HinhThuc");
                     soComboTang=r.getInt("SoComboTang");
                 }
@@ -49,8 +48,8 @@ public class HoaDonDAO {
     }
 
     /** Store the exact promotion terms validated while the checkout transaction holds its locks. */
-    public boolean themHoaDon(Connection c,HoaDon h,BigDecimal phanTram,String hinhThuc,int soComboTang)throws SQLException{
-        if(phanTram==null||phanTram.signum()<0||phanTram.compareTo(new BigDecimal("100"))>0
+    public boolean themHoaDon(Connection c,HoaDon h,double phanTram,String hinhThuc,int soComboTang)throws SQLException{
+        if(phanTram<0||phanTram>100
                 ||!java.util.Arrays.asList(KhuyenMai.DS_HINH_THUC).contains(hinhThuc)||soComboTang<0)
             throw new SQLException("Điều kiện khuyến mãi áp dụng không hợp lệ");
         String sql="INSERT INTO HoaDon(MaHoaDon,MaNhanVien,MaKhachHang,MaKhuyenMai,NgayLap,PhuongThucThanhToan,"
@@ -64,19 +63,19 @@ public class HoaDonDAO {
             p.setTimestamp(5,Timestamp.valueOf(h.getNgayLap()==null?LocalDateTime.now():h.getNgayLap()));
             p.setString(6,h.getPhongThucThanhToan()==null?"Tiền mặt":h.getPhongThucThanhToan());
             p.setString(7,h.getPhieuDatVe()==null?null:h.getPhieuDatVe().getMaPhieuDatVe());
-            p.setBigDecimal(8,phanTram);
+            p.setDouble(8,phanTram);
             p.setString(9,hinhThuc);
             p.setInt(10,soComboTang);
             return p.executeUpdate()==1;
         }
     }
-    public BigDecimal layTongPhieuChoThanhToan(String maPhieu) throws SQLException {
+    public double layTongPhieuChoThanhToan(String maPhieu) throws SQLException {
         String sql="SELECT p.TrangThai TrangThaiPhieu,d.DonGia,v.TrangThai TrangThaiVe,gs.TrangThai TrangThaiGhe,"
                 + "sc.TrangThai TrangThaiSuat,sc.GioBatDau FROM PhieuDatVe p "
                 + "JOIN ChiTietPhieuDatVe d ON d.MaPhieuDatVe=p.MaPhieuDatVe JOIN Ve v ON v.MaVe=d.MaVe "
                 + "JOIN Ghe_SuatChieu gs ON gs.MaSuatChieu=v.MaSuatChieu AND gs.MaGhe=v.MaGhe "
                 + "JOIN SuatChieu sc ON sc.MaSuatChieu=v.MaSuatChieu WHERE p.MaPhieuDatVe=?";
-        BigDecimal tong=BigDecimal.ZERO;
+        double tong=0;
         int soVe=0;
         try(Connection conn=ConnectDB.getConnection();PreparedStatement ps=conn.prepareStatement(sql)) {
             ps.setString(1,maPhieu);
@@ -87,7 +86,7 @@ public class HoaDonDAO {
                     if(!"Đã đặt".equals(rs.getString("TrangThaiVe"))||!"Đã đặt".equals(rs.getString("TrangThaiGhe")))throw new SQLException("Trạng thái vé hoặc ghế không hợp lệ");
                     String loiSuat=ThanhToanBanVeDAO.kiemTraSuat(rs.getString("TrangThaiSuat"),rs.getTimestamp("GioBatDau").toLocalDateTime());
                     if(loiSuat!=null)throw new SQLException(loiSuat);
-                    tong=tong.add(rs.getBigDecimal("DonGia"));
+                    tong+=rs.getDouble("DonGia");
                     soVe++;
                 }
             }
@@ -122,14 +121,14 @@ public class HoaDonDAO {
                     String loiSuat=ThanhToanBanVeDAO.kiemTraSuat(r.getString("TrangThaiSuat"),r.getTimestamp("GioBatDau").toLocalDateTime());
                     if(loiSuat!=null)throw new SQLException(loiSuat);
                     if(!"Đã đặt".equals(r.getString("TrangThaiVe"))||!"Đã đặt".equals(r.getString("TrangThaiGhe")))throw new SQLException("Vé hoặc ghế trong phiếu không còn ở trạng thái Đã đặt");
-                    details.add(new String[]{r.getString("MaVe"),r.getBigDecimal("DonGia").toPlainString(),r.getString("MaSuatChieu"),r.getString("MaGhe")});
+                    details.add(new String[]{r.getString("MaVe"),String.valueOf(r.getDouble("DonGia")),r.getString("MaSuatChieu"),r.getString("MaGhe")});
                 }
             }
         }
         if(details.isEmpty())throw new SQLException("Phiếu đặt chưa có vé");
-        BigDecimal tongPhieu=BigDecimal.ZERO;
-        for(String[] detail:details)tongPhieu=tongPhieu.add(new BigDecimal(detail[1]));
-        if(BigDecimal.valueOf(h.getTongTien()).compareTo(tongPhieu)!=0)throw new SQLException("Tổng tiền phiếu đã thay đổi; hãy kiểm tra lại trước khi thu tiền");
+        double tongPhieu=0;
+        for(String[] detail:details)tongPhieu+=Double.parseDouble(detail[1]);
+        if(Math.abs(h.getTongTien()-tongPhieu)>0.01)throw new SQLException("Tổng tiền phiếu đã thay đổi; hãy kiểm tra lại trước khi thu tiền");
         String sql="INSERT INTO "
                 + "HoaDon(MaHoaDon,MaNhanVien,MaKhachHang,MaKhuyenMai,NgayLap,PhuongThucThanhToan,MaPhieuDatVe,TrangThai,PhanTramGiamApDung,HinhThucApDung,SoComboTangApDung) "
                 + "VALUES(?,?,?,NULL,?,?,?,N'Đã thanh toán',0,N'Giảm hóa đơn',0)";
@@ -147,7 +146,7 @@ public class HoaDonDAO {
             for(String[]d:details) {
                 p.setString(1,h.getMaHoaDon());
                 p.setString(2,d[0]);
-                p.setBigDecimal(3,new BigDecimal(d[1]));
+                p.setDouble(3,Double.parseDouble(d[1]));
                 p.addBatch();
             }p.executeBatch();
         }
@@ -239,7 +238,7 @@ public class HoaDonDAO {
                     String item;
                     if(r.getString("MaVe")!=null)item="Vé "+r.getString("MaVe")+" · ghế "+r.getString("ViTri")+" · suất "+r.getString("MaSuatChieu")+" · "+r.getString("TenPhim");
                     else item="Combo "+r.getString("TenCombo")+" × "+r.getInt("SoLuong");
-                    out.add(item+" — "+String.format("%,.0f VNĐ",r.getBigDecimal("DonGia").doubleValue()*r.getInt("SoLuong")));
+                    out.add(item+" — "+String.format("%,.0f VNĐ",r.getDouble("DonGia")*r.getInt("SoLuong")));
                 }
             }
         } catch(SQLException e) {
@@ -259,7 +258,7 @@ public class HoaDonDAO {
             try(ResultSet r=s.executeQuery()) {
                 while(r.next()) {
                     int sl=r.getInt("SL");
-                    double dg=r.getBigDecimal("DonGia").doubleValue();
+                    double dg=r.getDouble("DonGia");
                     out.add(new Object[]{r.getString("Ten"),sl,dg,dg*sl});
                 }
             }

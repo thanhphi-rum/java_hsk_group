@@ -8,7 +8,6 @@ import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
-import java.math.BigDecimal;
 import java.util.TreeSet;
 
 /** Bước thu tiền tại quầy, mỗi phương thức một cách: tiền mặt (tính tiền thừa) và chuyển khoản (mã VietQR). */
@@ -19,21 +18,21 @@ public final class ThuTienDialog {
     /** Kết quả khi nhân viên xác nhận đã thu tiền. */
     public static final class KetQua {
         /** Số tiền khách đưa; chỉ có khi trả tiền mặt, các phương thức khác là null. */
-        public final BigDecimal tienKhachDua;
+        public final Double tienKhachDua;
 
-        KetQua(BigDecimal tienKhachDua) { this.tienKhachDua = tienKhachDua; }
+        KetQua(Double tienKhachDua) { this.tienKhachDua = tienKhachDua; }
     }
 
     private ThuTienDialog() { }
 
     /** @return kết quả khi đã thu tiền, hoặc null nếu nhân viên hủy. */
-    public static KetQua hienThi(Component parent, String phuongThuc, BigDecimal soTien, String maHD) {
+    public static KetQua hienThi(Component parent, String phuongThuc, double soTien, String maHD) {
         if (PhuongThucThanhToan.TIEN_MAT.equals(phuongThuc)) return thuTienMat(parent, soTien);
         return thuChuyenKhoan(parent, soTien, maHD);
     }
 
     // ------------------------------------------------------------ tiền mặt
-    private static KetQua thuTienMat(Component parent, BigDecimal soTien) {
+    private static KetQua thuTienMat(Component parent, double soTien) {
         JDialog d = taoHopThoai(parent, "Thu tiền mặt");
         JPanel pn = noiDung(d);
         pn.add(nhan("Số tiền cần thu: " + tien(soTien), 18, true));
@@ -51,8 +50,8 @@ public final class ThuTienDialog {
         JPanel goiY = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         goiY.setOpaque(false);
         goiY.setAlignmentX(Component.LEFT_ALIGNMENT);
-        goiY.add(nutGoiY("Đủ tiền", tf, soTien.longValue()));
-        for (long v : menhGiaGoiY(soTien.longValue())) goiY.add(nutGoiY(String.format("%,d", v), tf, v));
+        goiY.add(nutGoiY("Đủ tiền", tf, (long) soTien));
+        for (long v : menhGiaGoiY((long) soTien)) goiY.add(nutGoiY(String.format("%,d", v), tf, v));
         pn.add(Box.createVerticalStrut(8));
         pn.add(goiY);
 
@@ -66,11 +65,11 @@ public final class ThuTienDialog {
         JButton huy = new JButton("Hủy");
         KetQua[] kq = {null};
         Runnable capNhat = () -> {
-            BigDecimal dua = docTien(tf.getText());
-            BigDecimal chenh = dua.subtract(soTien);
-            boolean du = chenh.signum() >= 0;
-            lblDua.setText(dua.signum() == 0 ? " " : "Khách đưa: " + tien(dua));
-            lblThua.setText(dua.signum() == 0 ? " " : du ? "Tiền thừa trả khách: " + tien(chenh) : "Còn thiếu: " + tien(chenh.negate()));
+            double dua = docTien(tf.getText());
+            double chenh = dua - soTien;
+            boolean du = chenh >= 0;
+            lblDua.setText(dua == 0 ? " " : "Khách đưa: " + tien(dua));
+            lblThua.setText(dua == 0 ? " " : du ? "Tiền thừa trả khách: " + tien(chenh) : "Còn thiếu: " + tien(-chenh));
             lblThua.setForeground(du ? XANH : DO);
             ok.setEnabled(du);
         };
@@ -102,13 +101,13 @@ public final class ThuTienDialog {
     }
 
     // ------------------------------------------------------------ chuyển khoản
-    private static KetQua thuChuyenKhoan(Component parent, BigDecimal soTien, String maHD) {
+    private static KetQua thuChuyenKhoan(Component parent, double soTien, String maHD) {
         JDialog d = taoHopThoai(parent, "Thu tiền - Chuyển khoản");
         JPanel pn = noiDung(d);
 
         // Mọi thành phần canh giữa
         JLabel lblTien = nhan("Số tiền cần thu: " + tien(soTien), 18, true);
-        JLabel qr = new JLabel(new ImageIcon(QR.anh(VietQR.taoChuoi(soTien.longValue(), maHD), 280)));
+        JLabel qr = new JLabel(new ImageIcon(QR.anh(VietQR.taoChuoi((long) soTien, maHD), 280)));
         qr.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
         JLabel lblNganHang = nhan(VietQR.TEN_NGAN_HANG + " · STK " + VietQR.SO_TAI_KHOAN, 14, false);
         JLabel lblChuTK = nhan(VietQR.TEN_CHU_TK, 14, false);
@@ -180,10 +179,10 @@ public final class ThuTienDialog {
         });
     }
 
-    private static BigDecimal docTien(String chu) {
+    private static double docTien(String chu) {
         String so = chu.replaceAll("\\D", "");
-        return so.isEmpty() || so.length() > 12 ? BigDecimal.ZERO : new BigDecimal(so);
+        return so.isEmpty() || so.length() > 12 ? 0 : Double.parseDouble(so);
     }
 
-    private static String tien(BigDecimal v) { return String.format("%,.0f VNĐ", v.doubleValue()); }
+    private static String tien(double v) { return String.format("%,.0f VNĐ", v); }
 }

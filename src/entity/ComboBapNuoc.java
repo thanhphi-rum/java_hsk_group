@@ -1,11 +1,9 @@
 package entity;
 
-import java.math.BigDecimal;
-
 public class ComboBapNuoc {
     private String maCombo,tenCombo,moTa,trangThai;
-    private BigDecimal giaBan;
-    public ComboBapNuoc(String maCombo,String tenCombo,BigDecimal giaBan,String moTa,String trangThai) {
+    private double giaBan;
+    public ComboBapNuoc(String maCombo,String tenCombo,double giaBan,String moTa,String trangThai) {
         this.maCombo=maCombo;
         this.tenCombo=tenCombo;
         this.giaBan=giaBan;
@@ -18,7 +16,7 @@ public class ComboBapNuoc {
     public String getTenCombo() {
         return tenCombo;
     }
-    public BigDecimal getGiaBan() {
+    public double getGiaBan() {
         return giaBan;
     }
     public String getMoTa() {
@@ -27,9 +25,5 @@ public class ComboBapNuoc {
     public String getTrangThai() {
         return trangThai;
     }
-    @Override public String toString(){return tenCombo+" — "+String.format("%,.0f VNĐ",giaBan.doubleValue());}
-
-    public ComboBapNuoc(String maCombo,String tenCombo,double giaBan,String moTa,String trangThai) {
-        this(maCombo,tenCombo,BigDecimal.valueOf(giaBan),moTa,trangThai);
-    }
+    @Override public String toString(){return tenCombo+" — "+String.format("%,.0f VNĐ",giaBan);}
 }

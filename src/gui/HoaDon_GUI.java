@@ -32,7 +32,7 @@ public class HoaDon_GUI extends JPanel {
         JPanel mainPanel = new JPanel(new BorderLayout());
 
 
-        // ====== Table ======
+        // Table
         String[] columnNames = {"Mã HĐ", "Ngày Lập", "NV", "Khách", "KM", "Tổng Tiền", "Thanh Toán", "Trạng Thái"};
         tableModel = new DefaultTableModel(columnNames, 0);
         tableHoaDon = new JTable(tableModel);
@@ -41,7 +41,7 @@ public class HoaDon_GUI extends JPanel {
         JScrollPane scrollPane = new JScrollPane(tableHoaDon);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-        // ====== Control Panel ======
+        // Control Panel
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
 
         tfTimKiem = new HintTextField("Tìm mã hóa đơn, khách hàng, SĐT...");
@@ -95,7 +95,7 @@ public class HoaDon_GUI extends JPanel {
     private void thanhToanPhieuDat() {
         String maPhieu=JOptionPane.showInputDialog(this,"Nhập mã phiếu đặt đang chờ thanh toán:","Thanh toán phiếu đặt",JOptionPane.QUESTION_MESSAGE);
         if(maPhieu==null || maPhieu.isBlank()) return;
-        java.math.BigDecimal tongPhieu=java.math.BigDecimal.ZERO;
+        double tongPhieu=0;
         try {
             tongPhieu=hoaDonDAO.layTongPhieuChoThanhToan(maPhieu.trim());
         } catch(SQLException ex) {
@@ -105,7 +105,7 @@ public class HoaDon_GUI extends JPanel {
         JComboBox<String> pay=new JComboBox<>(util.PhuongThucThanhToan.TAT_CA);
         if(JOptionPane.showConfirmDialog(this,pay,"Xác nhận phương thức thanh toán",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)return;
         if(MainFrame.getInstance()==null || MainFrame.getInstance().getTaiKhoan()==null)return;
-        HoaDon invoice=new HoaDon("HD"+System.currentTimeMillis(),MainFrame.getInstance().getTaiKhoan().getNhanVien(),null,null,java.time.LocalDateTime.now(),tongPhieu.doubleValue(),String.valueOf(pay.getSelectedItem()));
+        HoaDon invoice=new HoaDon("HD"+System.currentTimeMillis(),MainFrame.getInstance().getTaiKhoan().getNhanVien(),null,null,java.time.LocalDateTime.now(),tongPhieu,String.valueOf(pay.getSelectedItem()));
         ThuTienDialog.KetQua thu=ThuTienDialog.hienThi(this,invoice.getPhongThucThanhToan(),tongPhieu,invoice.getMaHoaDon());
         if(thu==null)return;
         try(Connection conn=ConnectDB.getConnection()) {
@@ -123,7 +123,7 @@ public class HoaDon_GUI extends JPanel {
             JOptionPane.showMessageDialog(this,"Không lưu được hóa đơn: "+ex.getMessage()+"\nNếu đã nhận tiền, hãy trả lại khách hoặc thanh toán lại.","Lỗi",JOptionPane.ERROR_MESSAGE);
         }
     }
-    /** Chỉ giữ hóa đơn nằm trong khoảng ngày đã chọn (bỏ trống = không giới hạn). */
+    // Chỉ giữ hóa đơn nằm trong khoảng ngày đã chọn (bỏ trống = không giới hạn)
     private List<HoaDon> locTheoNgay(List<HoaDon> ds) {
         java.time.LocalDate tu = dcTu.getDate() == null ? null : dcTu.getDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
         java.time.LocalDate den = dcDen.getDate() == null ? null : dcDen.getDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
@@ -139,7 +139,7 @@ public class HoaDon_GUI extends JPanel {
         return out;
     }
 
-    /** Thẻ chi tiết hóa đơn bên phải: bảng dịch vụ + tổng tiền, khuyến mãi, thành tiền. */
+    // Thẻ chi tiết hóa đơn bên phải: bảng dịch vụ + tổng tiền, khuyến mãi, thành tiền
     private JPanel chiTietHoaDon() {
         AppTheme.Card card = new AppTheme.Card(new BorderLayout(0, 10));
         card.setPreferredSize(new Dimension(380, 0));
@@ -248,7 +248,7 @@ public class HoaDon_GUI extends JPanel {
         if(show)JOptionPane.showMessageDialog(this,new JScrollPane(area),"Chi tiết hóa đơn",JOptionPane.INFORMATION_MESSAGE);
     }
 
-    /** In lại hóa đơn đang chọn theo cùng mẫu hóa đơn 80mm lúc bán; đồng thời lưu PDF vào thư mục hoadon của dự án. */
+    // In lại hóa đơn đang chọn theo cùng mẫu hóa đơn 80mm lúc bán; đồng thời lưu PDF vào thư mục hoadon của dự án
     private void inLaiHoaDon(){
         int row=tableHoaDon.getSelectedRow();
         if(row<0) {

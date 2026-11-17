@@ -13,7 +13,7 @@ public class VeDAO {
             ps.setString(1,ve.getMaVe());
             ps.setString(2,ve.getSuatChieu().getMaSuatChieu());
             ps.setString(3,ve.getGhe().getMaGhe());
-            ps.setBigDecimal(4,java.math.BigDecimal.valueOf(ve.getGiaTien()));
+            ps.setDouble(4,ve.getGiaTien());
             ps.setString(5,ve.getTrangThai()==null?"Đã bán":ve.getTrangThai());
             return ps.executeUpdate()==1;
         } catch(SQLException e) {

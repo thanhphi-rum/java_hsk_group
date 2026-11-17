@@ -3,7 +3,6 @@ package dao;
 import connect.ConnectDB;
 import entity.*;
 import util.GiaVe;
-import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -59,28 +58,28 @@ public class PhieuDatVeDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     GheSuatChieu gsc = new GheSuatChieu(new Ghe(rs.getString("MaGhe")), new SuatChieu(rs.getString("MaSuatChieu")), null);
-                    Ve ve = new Ve(rs.getString("MaVe"), gsc, rs.getBigDecimal("GiaTien").doubleValue(), rs.getString("TrangThai"));
-                    ds.add(new ChiTietPhieuDatVe(phieu, ve, rs.getBigDecimal("DonGia").doubleValue()));
+                    Ve ve = new Ve(rs.getString("MaVe"), gsc, rs.getDouble("GiaTien"), rs.getString("TrangThai"));
+                    ds.add(new ChiTietPhieuDatVe(phieu, ve, rs.getDouble("DonGia")));
                 }
             }
         }
         return ds;
     }
 
-    public BigDecimal taoPhieuDat(Connection conn, String maPhieuDatVe, String maKhachHang,
+    public double taoPhieuDat(Connection conn, String maPhieuDatVe, String maKhachHang,
             String maSuatChieu, List<String> maGhe) throws SQLException {
         if (conn.getAutoCommit()) throw new SQLException("Tạo phiếu phải chạy trong transaction");
         if (maGhe == null || maGhe.isEmpty()) throw new SQLException("Chọn ít nhất một ghế");
         if (new HashSet<>(maGhe).size() != maGhe.size()) throw new SQLException("Danh sách ghế bị trùng");
 
-        BigDecimal giaCoBan;
+        double giaCoBan;
         String trangThaiSuat;
         LocalDateTime gioBatDau;
         try (PreparedStatement ps = conn.prepareStatement("SELECT GiaVe,TrangThai,GioBatDau FROM SuatChieu WITH (UPDLOCK,HOLDLOCK) WHERE MaSuatChieu=?")) {
             ps.setString(1, maSuatChieu);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) throw new SQLException("Không tìm thấy suất chiếu");
-                giaCoBan = rs.getBigDecimal("GiaVe");
+                giaCoBan = rs.getDouble("GiaVe");
                 trangThaiSuat = rs.getString("TrangThai");
                 gioBatDau = rs.getTimestamp("GioBatDau").toLocalDateTime();
             }
@@ -88,7 +87,7 @@ public class PhieuDatVeDAO {
         String loiSuat = ThanhToanBanVeDAO.kiemTraSuat(trangThaiSuat, gioBatDau);
         if (loiSuat != null) throw new SQLException(loiSuat);
 
-        Map<String, BigDecimal> giaTheoGhe = new LinkedHashMap<>();
+        Map<String, Double> giaTheoGhe = new LinkedHashMap<>();
         String sqlGhe = "SELECT gs.TrangThai,g.LoaiGhe FROM Ghe_SuatChieu gs WITH (UPDLOCK,HOLDLOCK) "
                 + "JOIN Ghe g ON g.MaGhe=gs.MaGhe WHERE gs.MaSuatChieu=? AND gs.MaGhe=?";
         try (PreparedStatement ps = conn.prepareStatement(sqlGhe)) {
@@ -111,30 +110,30 @@ public class PhieuDatVeDAO {
             ps.executeUpdate();
         }
 
-        BigDecimal tongTien = BigDecimal.ZERO;
+        double tongTien = 0;
         String sqlVe = "INSERT INTO Ve(MaVe,MaSuatChieu,MaGhe,GiaTien,TrangThai) VALUES(?,?,?,?,N'Đã đặt')";
         String sqlChiTiet = "INSERT INTO ChiTietPhieuDatVe(MaPhieuDatVe,MaVe,DonGia) VALUES(?,?,?)";
         String sqlGiuGhe = "UPDATE Ghe_SuatChieu SET TrangThai=N'Đã đặt' WHERE MaSuatChieu=? AND MaGhe=? AND TrangThai=N'Trống'";
         try (PreparedStatement ve = conn.prepareStatement(sqlVe);
              PreparedStatement chiTiet = conn.prepareStatement(sqlChiTiet);
              PreparedStatement giuGhe = conn.prepareStatement(sqlGiuGhe)) {
-            for (Map.Entry<String, BigDecimal> entry : giaTheoGhe.entrySet()) {
+            for (Map.Entry<String, Double> entry : giaTheoGhe.entrySet()) {
                 String maVe = "VE" + UUID.randomUUID().toString().replace("-", "").substring(0, 18);
                 ve.setString(1, maVe);
                 ve.setString(2, maSuatChieu);
                 ve.setString(3, entry.getKey());
-                ve.setBigDecimal(4, entry.getValue());
+                ve.setDouble(4, entry.getValue());
                 if (ve.executeUpdate() != 1) throw new SQLException("Không tạo được vé cho ghế " + entry.getKey());
 
                 chiTiet.setString(1, maPhieuDatVe);
                 chiTiet.setString(2, maVe);
-                chiTiet.setBigDecimal(3, entry.getValue());
+                chiTiet.setDouble(3, entry.getValue());
                 if (chiTiet.executeUpdate() != 1) throw new SQLException("Không lưu được chi tiết phiếu đặt");
 
                 giuGhe.setString(1, maSuatChieu);
                 giuGhe.setString(2, entry.getKey());
                 if (giuGhe.executeUpdate() != 1) throw new SQLException("Không giữ được ghế " + entry.getKey());
-                tongTien = tongTien.add(entry.getValue());
+                tongTien += entry.getValue();
             }
         }
         return tongTien;

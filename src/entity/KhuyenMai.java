@@ -103,22 +103,22 @@ public class KhuyenMai {
     /** Mức ưu đãi dạng chữ: "20%" hoặc "1 combo". */
     public String mucUuDai(){
         if(laTangCombo())return soComboTang+" combo";
-        return new java.math.BigDecimal(String.valueOf(phanTramGiam)).stripTrailingZeros().toPlainString()+"%";
+        return (phanTramGiam==(long)phanTramGiam?String.valueOf((long)phanTramGiam):String.valueOf(phanTramGiam))+"%";
     }
 
     /**
      * Tổng tiền sau giảm theo hình thức khuyến mãi (cùng công thức với view vw_HoaDon_TongTien trong SQL).
      * @param tienVe tổng tiền vé, @param tienCombo tổng tiền combo,
-     * @param giaComboReNhat đơn giá combo thấp nhất trong đơn (null nếu không có combo), @param soCombo tổng số combo trong đơn
+     * @param giaComboReNhat đơn giá combo thấp nhất trong đơn (0 nếu không có combo), @param soCombo tổng số combo trong đơn
      */
-    public java.math.BigDecimal tongSauGiam(java.math.BigDecimal tienVe,java.math.BigDecimal tienCombo,java.math.BigDecimal giaComboReNhat,int soCombo){
-        java.math.BigDecimal goc=tienVe.add(tienCombo);
-        java.math.BigDecimal pct=new java.math.BigDecimal(String.valueOf(phanTramGiam)).movePointLeft(2);
-        java.math.BigDecimal giam;
-        if(HT_VE.equals(hinhThuc))giam=tienVe.multiply(pct);
-        else if(HT_COMBO.equals(hinhThuc))giam=tienCombo.multiply(pct);
-        else if(HT_TANG_COMBO.equals(hinhThuc))giam=giaComboReNhat==null?java.math.BigDecimal.ZERO:giaComboReNhat.multiply(java.math.BigDecimal.valueOf(Math.min(soComboTang,soCombo)));
-        else giam=goc.multiply(pct);
-        return goc.subtract(giam).setScale(2,java.math.RoundingMode.HALF_UP);
+    public double tongSauGiam(double tienVe,double tienCombo,double giaComboReNhat,int soCombo){
+        double goc=tienVe+tienCombo;
+        double pct=phanTramGiam/100;
+        double giam;
+        if(HT_VE.equals(hinhThuc))giam=tienVe*pct;
+        else if(HT_COMBO.equals(hinhThuc))giam=tienCombo*pct;
+        else if(HT_TANG_COMBO.equals(hinhThuc))giam=giaComboReNhat*Math.min(soComboTang,soCombo);
+        else giam=goc*pct;
+        return Math.round((goc-giam)*100)/100.0;
     }
 }

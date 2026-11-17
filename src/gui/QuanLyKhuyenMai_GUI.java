@@ -65,7 +65,7 @@ public class QuanLyKhuyenMai_GUI extends JPanel {
         KhuyenMai old = null;
         if (id != null) for (KhuyenMai k : dao.layTatCaKhuyenMai()) if (k.getMaKhuyenMai().equals(id)) old = k;
         JTextField ma = new JTextField(old == null ? "" : old.getMaKhuyenMai()), ten = new JTextField(old == null ? "" : old.getTenKhuyenMai()),
-                muc = new JTextField(old == null ? "" : (old.laTangCombo() ? String.valueOf(old.getSoComboTang()) : new java.math.BigDecimal(String.valueOf(old.getPhanTramGiam())).stripTrailingZeros().toPlainString())),
+                muc = new JTextField(old == null ? "" : (old.laTangCombo() ? String.valueOf(old.getSoComboTang()) : (old.getPhanTramGiam() == (long) old.getPhanTramGiam() ? String.valueOf((long) old.getPhanTramGiam()) : String.valueOf(old.getPhanTramGiam())))),
                 mota = new JTextField(old == null ? "" : old.getMoTa());
         JComboBox<String> hinhThuc = new JComboBox<>(KhuyenMai.DS_HINH_THUC), status = new JComboBox<>(new String[]{"Hoạt động", "Ngừng hoạt động"});
         if (old != null) { hinhThuc.setSelectedItem(old.getHinhThuc()); status.setSelectedItem(old.getTrangThai()); }

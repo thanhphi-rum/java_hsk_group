@@ -2,7 +2,6 @@ package dao;
 
 import connect.ConnectDB;
 import entity.ComboBapNuoc;
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,7 +13,7 @@ public class ComboBapNuocDAO {
     public static final String DANG_BAN = "Đang bán";
     public static final String NGUNG_BAN = "Ngừng bán";
     private static final String CAC_COT = "MaCombo,TenCombo,GiaBan,MoTa,TrangThai";
-    private static final BigDecimal GIA_TOI_DA = new BigDecimal("9999999999999999.99");
+    private static final double GIA_TOI_DA = 1_000_000_000;
 
     public List<ComboBapNuoc> layComboDangBan() {
         List<ComboBapNuoc> danhSach = new ArrayList<>();
@@ -46,7 +45,7 @@ public class ComboBapNuocDAO {
         try (Connection c = ConnectDB.getConnection(); PreparedStatement p = c.prepareStatement(sql)) {
             p.setString(1, combo.getMaCombo().trim());
             p.setString(2, combo.getTenCombo().trim());
-            p.setBigDecimal(3, combo.getGiaBan().setScale(2));
+            p.setDouble(3, combo.getGiaBan());
             p.setString(4, combo.getMoTa());
             p.setString(5, combo.getTrangThai());
             return p.executeUpdate() == 1;
@@ -58,7 +57,7 @@ public class ComboBapNuocDAO {
         String sql = "UPDATE ComboBapNuoc SET TenCombo=?,GiaBan=?,MoTa=?,TrangThai=? WHERE MaCombo=?";
         try (Connection c = ConnectDB.getConnection(); PreparedStatement p = c.prepareStatement(sql)) {
             p.setString(1, combo.getTenCombo().trim());
-            p.setBigDecimal(2, combo.getGiaBan().setScale(2));
+            p.setDouble(2, combo.getGiaBan());
             p.setString(3, combo.getMoTa());
             p.setString(4, combo.getTrangThai());
             p.setString(5, combo.getMaCombo().trim());
@@ -85,15 +84,12 @@ public class ComboBapNuocDAO {
         if (combo.getMoTa() != null && combo.getMoTa().length() > 200) {
             throw new IllegalArgumentException("Mô tả tối đa 200 ký tự.");
         }
-        BigDecimal gia = combo.getGiaBan();
-        if (gia == null || gia.signum() < 0) {
+        double gia = combo.getGiaBan();
+        if (!(gia >= 0)) {
             throw new IllegalArgumentException("Giá bán phải là số lớn hơn hoặc bằng 0.");
         }
-        if (gia.compareTo(GIA_TOI_DA) > 0) {
-            throw new IllegalArgumentException("Giá bán vượt quá giới hạn 9.999.999.999.999.999,99.");
-        }
-        if (gia.stripTrailingZeros().scale() > 2) {
-            throw new IllegalArgumentException("Giá bán chỉ được có tối đa 2 chữ số thập phân.");
+        if (gia > GIA_TOI_DA) {
+            throw new IllegalArgumentException("Giá bán tối đa 1.000.000.000 VNĐ.");
         }
         kiemTraTrangThai(combo.getTrangThai());
     }
@@ -114,7 +110,7 @@ public class ComboBapNuocDAO {
     }
 
     private static ComboBapNuoc docCombo(ResultSet r) throws SQLException {
-        return new ComboBapNuoc(r.getString("MaCombo"), r.getString("TenCombo"), r.getBigDecimal("GiaBan"),
+        return new ComboBapNuoc(r.getString("MaCombo"), r.getString("TenCombo"), r.getDouble("GiaBan"),
                 r.getString("MoTa"), r.getString("TrangThai"));
     }
 }

@@ -11,7 +11,7 @@ public class ChiTietHoaDonDAO {
         try(PreparedStatement ps=conn.prepareStatement(sql)) {
             ps.setString(1,maHoaDon);
             ps.setString(2,maVe);
-            ps.setBigDecimal(3,java.math.BigDecimal.valueOf(donGia));
+            ps.setDouble(3,donGia);
             return ps.executeUpdate()==1;
         }
     }
@@ -22,7 +22,7 @@ public class ChiTietHoaDonDAO {
             ps.setString(1,maHoaDon);
             ps.setString(2,maCombo);
             ps.setInt(3,soLuong);
-            ps.setBigDecimal(4,java.math.BigDecimal.valueOf(donGia));
+            ps.setDouble(4,donGia);
             return ps.executeUpdate()==1;
         }
     }

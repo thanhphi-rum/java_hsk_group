@@ -14,8 +14,6 @@ import entity.GheSuatChieu;
 import entity.KhuyenMai;
 import entity.TaiKhoan;
 import entity.ComboBapNuoc;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -34,7 +32,7 @@ import util.GiaVe;
 import java.time.LocalDateTime;
 import util.PhuongThucThanhToan;
 
-/** Màn bán vé: cột trái chọn phim/ngày/phòng/suất, giữa là sơ đồ ghế, phải là "Thông tin đặt vé" và nút Thanh toán. */
+// Màn bán vé: cột trái chọn phim/ngày/phòng/suất, giữa là sơ đồ ghế, phải là "Thông tin đặt vé" và nút Thanh toán
 public class BanVe_GUI extends JPanel {
     private final JComboBox<String> cbPhim = new JComboBox<>(), cbNgay = new JComboBox<>(), cbPhongChieu = new JComboBox<>(),
             cbSuatChieu = new JComboBox<>(), cbNhanVien = new JComboBox<>(), cbKhachHang = new JComboBox<>(), cbKhuyenMai = new JComboBox<>(),
@@ -47,7 +45,7 @@ public class BanVe_GUI extends JPanel {
     private String maHoaDonVuaThanhToan = null, noiDungHoaDon = ""; // dữ liệu giao dịch thanh toán gần nhất, dùng để in vé/hóa đơn
     private final List<String[]> veVuaThanhToan = new ArrayList<>();
     private double tongTien = 0.0;
-    private BigDecimal giaCoBan = BigDecimal.valueOf(100000);
+    private double giaCoBan = 100000;
     private static final Color GHE_TRONG = new Color(0x3B82F6);
     private static final Color GHE_DANG_CHON = new Color(0xE0384F);
     private static final Color GHE_DA_DAT = new Color(0x8B5CF6);
@@ -73,7 +71,7 @@ public class BanVe_GUI extends JPanel {
         return l;
     }
 
-    /** Combo hiển thị gọn: chuyển chuỗi lưu trong combo thành chuỗi dễ đọc. */
+    // Combo hiển thị gọn: chuyển chuỗi lưu trong combo thành chuỗi dễ đọc
     private static void hienThi(JComboBox<String> cb, java.util.function.Function<String, String> f) {
         cb.setRenderer(new DefaultListCellRenderer() {
             @Override public Component getListCellRendererComponent(JList<?> l, Object v, int i, boolean s, boolean fo) {
@@ -212,7 +210,7 @@ public class BanVe_GUI extends JPanel {
         p.add(v, c);
     }
 
-    /** Poster, tên, thời lượng, thể loại của phim đang chọn. */
+    // Poster, tên, thời lượng, thể loại của phim đang chọn
     private void capNhatThongTinPhim(String maPhim) {
         lblPoster.setIcon(AppTheme.poster(maPhim, 120, 172));
         lblTenPhim.setText("<html><body style='width:130px'>" + (cbPhim.getSelectedItem() == null ? "" : cbPhim.getSelectedItem().toString().split(" - ", 2)[1]) + "</html>");
@@ -228,7 +226,7 @@ public class BanVe_GUI extends JPanel {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** Một hộp thoại duy nhất: mỗi combo đang bán có một ô số lượng. Chọn/đổi/bỏ combo chỉ là sửa số lượng (0 = bỏ). */
+    // Một hộp thoại duy nhất: mỗi combo đang bán có một ô số lượng. Chọn/đổi/bỏ combo chỉ là sửa số lượng (0 = bỏ)
     private void themCombo(){
         List<ComboBapNuoc> ds=comboDAO.layComboDangBan();
         if(ds.isEmpty()){JOptionPane.showMessageDialog(this,"Hiện không có combo đang bán.");return;}
@@ -251,7 +249,7 @@ public class BanVe_GUI extends JPanel {
         updateThongTinHoaDon();
     }
 
-    /** Nút Thanh toán: kiểm tra đủ thông tin -> thu tiền -> ghi hóa đơn/vé trong một giao dịch -> in vé. */
+    // Nút Thanh toán: kiểm tra đủ thông tin -> thu tiền -> ghi hóa đơn/vé trong một giao dịch -> in vé
     private void thanhToan() {
         if (cbSuatChieu.getSelectedItem() == null) { JOptionPane.showMessageDialog(this, "Chưa có suất chiếu để bán vé.", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE); return; }
         if (gheDangChon().isEmpty()) { JOptionPane.showMessageDialog(this, "Hãy chọn ít nhất một ghế.", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE); return; }
@@ -281,10 +279,10 @@ public class BanVe_GUI extends JPanel {
 
         String maSuat = cbSuatChieu.getSelectedItem().toString().split(" - ")[0];
         List<String> maGhe = new ArrayList<>();
-        BigDecimal tongDat = BigDecimal.ZERO;
+        double tongDat = 0;
         for (JButton button : gheChon) {
             maGhe.add(button.getActionCommand());
-            tongDat = tongDat.add((BigDecimal) button.getClientProperty("giaVe"));
+            tongDat += (Double) button.getClientProperty("giaVe");
         }
         String lyDo = thanhToanDAO.lyDoKhongBanDuoc(maSuat, maGhe);
         if (lyDo != null) {
@@ -317,12 +315,12 @@ public class BanVe_GUI extends JPanel {
         loadSoDoGhe(maSuat);
         JOptionPane.showMessageDialog(this,
                 "Đã tạo phiếu " + maPhieu + " với " + maGhe.size() + " vé, tổng "
-                        + String.format("%,.0f VNĐ", tongDat.doubleValue())
+                        + String.format("%,.0f VNĐ", tongDat)
                         + ". Mở mục Phiếu đặt để tra cứu hoặc mục Hóa đơn để thanh toán.",
                 "Tạo phiếu thành công", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    /** Kiểm tra ghế, thu tiền theo phương thức đã chọn rồi lưu giao dịch. Trả về true nếu đã lưu thành công. */
+    // Kiểm tra ghế, thu tiền theo phương thức đã chọn rồi lưu giao dịch. Trả về true nếu đã lưu thành công
     private boolean xacNhanThanhToan() {
         if (MainFrame.getInstance() == null || MainFrame.getInstance().getTaiKhoan() == null || MainFrame.getInstance().getTaiKhoan().getNhanVien() == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng đăng nhập bằng tài khoản nhân viên.", "Chưa đăng nhập", JOptionPane.WARNING_MESSAGE);
@@ -337,7 +335,7 @@ public class BanVe_GUI extends JPanel {
         List<String> maGhe = new ArrayList<>();
         for (JButton b : gheChon) maGhe.add(b.getActionCommand());
 
-        // Kiểm tra lại TRƯỚC khi nhận tiền (quầy khác có thể vừa bán ghế, hoặc suất đã quá giờ bán).
+        // Kiểm tra lại TRƯỚC khi nhận tiền (quầy khác có thể vừa bán ghế, hoặc suất đã quá giờ bán)
         String lyDo = thanhToanDAO.lyDoKhongBanDuoc(maSuat, maGhe);
         if (lyDo != null) {
             loadSoDoGhe(maSuat);
@@ -345,7 +343,7 @@ public class BanVe_GUI extends JPanel {
             return false;
         }
 
-        BigDecimal tongPhaiThu = BigDecimal.valueOf(tongTien).setScale(2, RoundingMode.HALF_UP);
+        double tongPhaiThu = GiaVe.lamTron(tongTien);
         String maHD = "HD" + System.currentTimeMillis();
         String phuongThuc = String.valueOf(cbPhuongThuc.getSelectedItem());
         ThuTienDialog.KetQua thu = ThuTienDialog.hienThi(this, phuongThuc, tongPhaiThu, maHD);
@@ -353,9 +351,9 @@ public class BanVe_GUI extends JPanel {
         return luuGiaoDich(maHD, maSuat, maGhe, phuongThuc, tongPhaiThu, thu);
     }
 
-    /** Ghi hóa đơn, vé, combo và điểm tích lũy trong một transaction; thành công thì giữ dữ liệu để in và làm mới sơ đồ ghế. */
+    // Ghi hóa đơn, vé, combo và điểm tích lũy trong một transaction; thành công thì giữ dữ liệu để in và làm mới sơ đồ ghế
     private boolean luuGiaoDich(String maHD, String maSuat, List<String> maGhe, String phuongThuc,
-                                BigDecimal tongPhaiThu, ThuTienDialog.KetQua thu) {
+                                double tongPhaiThu, ThuTienDialog.KetQua thu) {
         String maNV = MainFrame.getInstance().getTaiKhoan().getNhanVien().getMaNhanVien();
         String maKH = maDangChon(cbKhachHang, "Khách vãng lai");
         String maKM = maDangChon(cbKhuyenMai, "Không");
@@ -381,14 +379,14 @@ public class BanVe_GUI extends JPanel {
         return true;
     }
 
-    /** Lỗi sau bước thu tiền: nhắc nhân viên xử lý tiền đã nhận, vì hóa đơn chưa được lưu. */
+    // Lỗi sau bước thu tiền: nhắc nhân viên xử lý tiền đã nhận, vì hóa đơn chưa được lưu
     private void baoLoiLuu(String thongBao) {
         JOptionPane.showMessageDialog(this,
                 thongBao + "\n\nHóa đơn CHƯA được lưu. Nếu đã nhận tiền của khách, hãy trả lại hoặc thanh toán lại.",
                 "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
 
-    /** Mã (phần trước " - ") của mục đang chọn; null nếu chưa chọn hoặc là mục mặc định như "Khách vãng lai", "Không". */
+    // Mã (phần trước " - ") của mục đang chọn; null nếu chưa chọn hoặc là mục mặc định như "Khách vãng lai", "Không"
     private static String maDangChon(JComboBox<String> cb, String mucMacDinh) {
         Object chon = cb.getSelectedItem();
         if (chon == null || chon.toString().equals(mucMacDinh)) return null;
@@ -401,7 +399,7 @@ public class BanVe_GUI extends JPanel {
         } catch (SQLException e) { e.printStackTrace(); }
     }
 
-    /** Các ngày có suất đang mở bán của phim; chọn sẵn hôm nay (hoặc ngày gần nhất sắp tới). */
+    // Các ngày có suất đang mở bán của phim; chọn sẵn hôm nay (hoặc ngày gần nhất sắp tới)
     private void loadDanhSachNgay(String maPhim) {
         cbNgay.removeAllItems();
         List<String> ngay = new ArrayList<>();
@@ -509,7 +507,7 @@ public class BanVe_GUI extends JPanel {
         return item;
     }
 
-    /** Nút ghế bo góc, tự vẽ để màu nền luôn đúng kể cả khi bị vô hiệu hóa. */
+    // Nút ghế bo góc, tự vẽ để màu nền luôn đúng kể cả khi bị vô hiệu hóa
     private static class GheButton extends JButton {
         GheButton(String text) { super(text); setContentAreaFilled(false); setBorderPainted(false); setFocusPainted(false); setOpaque(false); }
         @Override protected void paintComponent(Graphics g) {
@@ -536,7 +534,7 @@ public class BanVe_GUI extends JPanel {
         java.util.Comparator<GheSuatChieu> order = java.util.Comparator.comparingInt((GheSuatChieu g) -> {
             String n = g.getGhe().getViTri().replaceAll("\\D+", ""); try { return Integer.parseInt(n); } catch (Exception ex) { return Integer.MAX_VALUE; }
         }).thenComparing(g -> g.getGhe().getViTri());
-        BigDecimal baseFare = BigDecimal.valueOf(layGiaVeSuatChieu());
+        double baseFare = layGiaVeSuatChieu();
         giaCoBan = baseFare;
         for (Map.Entry<String, List<GheSuatChieu>> entry : rows.entrySet()) {
             entry.getValue().sort(order);
@@ -544,13 +542,13 @@ public class BanVe_GUI extends JPanel {
             rowPanel.add(tenHang(entry.getKey()));
             for (GheSuatChieu gsc : entry.getValue()) {
                 Ghe seat = gsc.getGhe(); String position = seat.getViTri() == null ? seat.getMaGhe() : seat.getViTri();
-                BigDecimal unit = GiaVe.tinh(baseFare, seat.getLoaiGhe());
+                double unit = GiaVe.tinh(baseFare, seat.getLoaiGhe());
                 boolean vip = GiaVe.laVip(seat.getLoaiGhe());
 
                 Color mauGoc = vip ? GHE_VIP : GHE_TRONG;
                 GheButton button = new GheButton(position);
                 button.setActionCommand(seat.getMaGhe()); button.putClientProperty("giaVe", unit); button.putClientProperty("mauGoc", mauGoc);
-                button.setToolTipText("Ghế " + position + " · " + (vip ? "VIP" : "Thường") + " · " + String.format("%,.0f VNĐ", unit.doubleValue()));
+                button.setToolTipText("Ghế " + position + " · " + (vip ? "VIP" : "Thường") + " · " + String.format("%,.0f VNĐ", unit));
                 button.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11)); button.setForeground(Color.WHITE); button.setPreferredSize(new Dimension(38, 34));
                 String status = gsc.getTrangThai();
                 if ("Đã bán".equalsIgnoreCase(status)) { button.setBackground(GHE_DA_BAN); button.setEnabled(false); }
@@ -584,42 +582,42 @@ public class BanVe_GUI extends JPanel {
         if (cbSuatChieu == null || cbSuatChieu.getSelectedItem() == null) return 100000;
         String id=cbSuatChieu.getSelectedItem().toString().split(" - ")[0];
         try (Connection c=ConnectDB.getConnection(); PreparedStatement p=c.prepareStatement("SELECT GiaVe FROM SuatChieu WHERE MaSuatChieu=?")) {
-            p.setString(1,id); try(ResultSet r=p.executeQuery()){if(r.next())return r.getBigDecimal(1).doubleValue();}
+            p.setString(1,id); try(ResultSet r=p.executeQuery()){if(r.next())return r.getDouble(1);}
         } catch(SQLException e) { e.printStackTrace(); }
         return 100000;
     }
 
-    private static String tien(BigDecimal v) { return String.format("%,.0fđ", v.doubleValue()); }
+    private static String tien(double v) { return String.format("%,.0fđ", v); }
 
-    /** Cập nhật khung "Thông tin đặt vé" và tổng tiền theo ghế, combo, khuyến mãi đang chọn. */
+    // Cập nhật khung "Thông tin đặt vé" và tổng tiền theo ghế, combo, khuyến mãi đang chọn
     private void updateThongTinHoaDon() {
-        BigDecimal tongVe = BigDecimal.ZERO;
+        double tongVe = 0;
         List<String> ten = new ArrayList<>();
-        java.util.TreeSet<BigDecimal> gia = new java.util.TreeSet<>();
+        java.util.TreeSet<Double> gia = new java.util.TreeSet<>();
         for (JButton seat : gheDangChon()) {
             ten.add(seat.getText());
             Object price = seat.getClientProperty("giaVe");
-            if (price instanceof BigDecimal) { tongVe = tongVe.add((BigDecimal) price); gia.add((BigDecimal) price); }
+            if (price instanceof Double) { tongVe += (Double) price; gia.add((Double) price); }
         }
-        BigDecimal tienCombo = BigDecimal.ZERO, giaComboReNhat = null;
+        double tienCombo = 0, giaComboReNhat = 0; // giaComboReNhat = 0: chưa có combo
         int soCombo = 0;
         StringBuilder tomTatCombo = new StringBuilder();
         for (Map.Entry<String, Integer> e : comboSoLuong.entrySet()) {
             ComboBapNuoc c = comboDuLieu.get(e.getKey());
             if (c == null) continue;
-            tienCombo = tienCombo.add(c.getGiaBan().multiply(BigDecimal.valueOf(e.getValue())));
+            tienCombo += c.getGiaBan() * e.getValue();
             soCombo += e.getValue();
-            if (giaComboReNhat == null || c.getGiaBan().compareTo(giaComboReNhat) < 0) giaComboReNhat = c.getGiaBan();
+            if (giaComboReNhat == 0 || c.getGiaBan() < giaComboReNhat) giaComboReNhat = c.getGiaBan();
             if (tomTatCombo.length() > 0) tomTatCombo.append(", ");
             tomTatCombo.append(c.getTenCombo()).append(" ×").append(e.getValue());
         }
-        BigDecimal goc = tongVe.add(tienCombo);
+        double goc = tongVe + tienCombo;
         KhuyenMai km = cbKhuyenMai.getSelectedItem() == null ? null : kmDuLieu.get(cbKhuyenMai.getSelectedItem().toString().split(" - ")[0]);
-        BigDecimal sau = km == null ? goc.setScale(2, RoundingMode.HALF_UP) : km.tongSauGiam(tongVe, tienCombo, giaComboReNhat, soCombo);
-        tongTien = sau.doubleValue();
-        BigDecimal giam = goc.subtract(sau);
+        double sau = km == null ? GiaVe.lamTron(goc) : km.tongSauGiam(tongVe, tienCombo, giaComboReNhat, soCombo);
+        tongTien = sau;
+        double giam = goc - sau;
         if (km != null && km.laTangCombo() && soCombo == 0) lblGiam.setText("Cần chọn combo");
-        else lblGiam.setText(giam.signum() > 0 ? "-" + tien(giam) : "—");
+        else lblGiam.setText(giam > 0.004 ? "-" + tien(giam) : "—");
 
         lblGhe.setText(ten.isEmpty() ? "—" : String.join(", ", ten));
         lblGhe.setToolTipText(lblGhe.getText());
@@ -628,14 +626,14 @@ public class BanVe_GUI extends JPanel {
         lblTongVe.setText(tien(tongVe));
         btnCombo.setText(tomTatCombo.length() == 0 ? "Không chọn" : tomTatCombo.toString());
         btnCombo.setToolTipText(tomTatCombo.length() == 0 ? "Chọn combo bắp nước" : tomTatCombo.toString());
-        lblThanhTien.setText(tien(BigDecimal.valueOf(tongTien)));
+        lblThanhTien.setText(tien(tongTien));
     }
 
     /**
      * Dữ liệu in vé/hóa đơn lấy thẳng từ hóa đơn VỪA LƯU trong CSDL (đúng từng dòng vé, combo, tiền giảm và tổng tiền),
      * nên tờ in luôn khớp số tiền đã thu. Chỉ khi đọc CSDL lỗi mới dùng dữ liệu trên màn hình.
      */
-    private void luuDuLieuIn(String maHD, BigDecimal tienKhachDua, LocalDateTime ngayLap){
+    private void luuDuLieuIn(String maHD, Double tienKhachDua, LocalDateTime ngayLap){
         try(Connection c=ConnectDB.getConnection()){
             String phim=cbPhim.getSelectedItem().toString().split(" - ",2)[1];
             String gio=cbSuatChieu.getSelectedItem().toString().split(" - ")[1].substring(0,16);
@@ -644,17 +642,17 @@ public class BanVe_GUI extends JPanel {
             List<String[]> ve=new ArrayList<>(); StringBuilder dong=new StringBuilder();
             try(PreparedStatement ps=c.prepareStatement("SELECT g.ViTri, ct.DonGia FROM ChiTietHoaDon ct JOIN Ve v ON v.MaVe=ct.MaVe JOIN Ghe g ON g.MaGhe=v.MaGhe WHERE ct.MaHoaDon=? ORDER BY g.ViTri")){
                 ps.setString(1,maHD);
-                try(ResultSet rs=ps.executeQuery()){while(rs.next()){String vt=rs.getString(1);double gia=rs.getBigDecimal(2).doubleValue();
+                try(ResultSet rs=ps.executeQuery()){while(rs.next()){String vt=rs.getString(1);double gia=rs.getDouble(2);
                     ve.add(new String[]{phim,gio,phong,vt,String.format("%,.0f VNĐ",gia)});dong.append("Vé ").append(vt).append("\t").append(String.format(tien,gia)).append("\n");}}
             }
             try(PreparedStatement ps=c.prepareStatement("SELECT cb.TenCombo, ct.SoLuong, ct.DonGia FROM ChiTietHoaDon ct JOIN ComboBapNuoc cb ON cb.MaCombo=ct.MaCombo WHERE ct.MaHoaDon=? ORDER BY ct.MaChiTietHoaDon")){
                 ps.setString(1,maHD);
-                try(ResultSet rs=ps.executeQuery()){while(rs.next())dong.append(rs.getString(1)).append(" × ").append(rs.getInt(2)).append("\t").append(String.format(tien,rs.getBigDecimal(3).doubleValue()*rs.getInt(2))).append("\n");}
+                try(ResultSet rs=ps.executeQuery()){while(rs.next())dong.append(rs.getString(1)).append(" × ").append(rs.getInt(2)).append("\t").append(String.format(tien,rs.getDouble(3)*rs.getInt(2))).append("\n");}
             }
             double goc,tong;
             try(PreparedStatement ps=c.prepareStatement("SELECT TongTienGoc, TongTien FROM vw_HoaDon_TongTien WHERE MaHoaDon=?")){
                 ps.setString(1,maHD);
-                try(ResultSet rs=ps.executeQuery()){if(!rs.next())throw new SQLException("Không thấy hóa đơn vừa lưu");goc=rs.getBigDecimal(1).doubleValue();tong=rs.getBigDecimal(2).doubleValue();}
+                try(ResultSet rs=ps.executeQuery()){if(!rs.next())throw new SQLException("Không thấy hóa đơn vừa lưu");goc=rs.getDouble(1);tong=rs.getDouble(2);}
             }
             if(ve.isEmpty())throw new SQLException("Hóa đơn không có vé");
             StringBuilder sb=new StringBuilder("Phim: "+phim+"\nSuất: "+gio+" - Phòng "+phong+"\n");
@@ -671,42 +669,42 @@ public class BanVe_GUI extends JPanel {
             sb.append("#TỔNG CỘNG\t").append(String.format(tien,tong)).append(" VNĐ\n---\n");
             sb.append("Thanh toán: ").append(cbPhuongThuc.getSelectedItem()).append("\n");
             if (tienKhachDua != null) {
-            sb.append("Khách đưa\t").append(String.format("%,.0f VNĐ", tienKhachDua.doubleValue())).append("\n");
-            sb.append("Tiền thừa\t").append(String.format("%,.0f VNĐ", tienKhachDua.subtract(BigDecimal.valueOf(tongTien)).doubleValue())).append("\n");
+            sb.append("Khách đưa\t").append(String.format("%,.0f VNĐ", tienKhachDua)).append("\n");
+            sb.append("Tiền thừa\t").append(String.format("%,.0f VNĐ", tienKhachDua - tongTien)).append("\n");
         }
         sb.append("Ngày lập: ").append((ngayLap == null ? LocalDateTime.now() : ngayLap).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
             maHoaDonVuaThanhToan=maHD; veVuaThanhToan.clear(); veVuaThanhToan.addAll(ve); noiDungHoaDon=sb.toString();
         }catch(Exception ex){ex.printStackTrace();luuDuLieuInTuGiaoDien(maHD, tienKhachDua, ngayLap);}
     }
 
-    /** (Dự phòng) Dữ liệu in lấy từ màn hình; gọi trước khi sơ đồ ghế bị reset. */
-    private void luuDuLieuInTuGiaoDien(String maHD, BigDecimal tienKhachDua, LocalDateTime ngayLap){
+    // (Dự phòng) Dữ liệu in lấy từ màn hình; gọi trước khi sơ đồ ghế bị reset
+    private void luuDuLieuInTuGiaoDien(String maHD, Double tienKhachDua, LocalDateTime ngayLap){
         maHoaDonVuaThanhToan=maHD;
         String phim=cbPhim.getSelectedItem().toString().split(" - ",2)[1];
         String gio=cbSuatChieu.getSelectedItem().toString().split(" - ")[1].substring(0,16); // yyyy-MM-dd HH:mm
         String phong=String.valueOf(cbPhongChieu.getSelectedItem());
         veVuaThanhToan.clear();
-        for(JButton b:gheDangChon())veVuaThanhToan.add(new String[]{phim,gio,phong,b.getText(),String.format("%,.0f VNĐ",((BigDecimal)b.getClientProperty("giaVe")).doubleValue())});
+        for(JButton b:gheDangChon())veVuaThanhToan.add(new String[]{phim,gio,phong,b.getText(),String.format("%,.0f VNĐ",(Double)b.getClientProperty("giaVe"))});
         String tien="%,.0f";
         StringBuilder sb=new StringBuilder("Phim: "+phim+"\nSuất: "+gio+" - Phòng "+phong+"\n");
         if(cbNhanVien.getSelectedItem()!=null)sb.append("Nhân viên: ").append(cbNhanVien.getSelectedItem()).append("\n");
         if(cbKhachHang.getSelectedItem()!=null)sb.append("Khách: ").append(cbKhachHang.getSelectedItem()).append("\n");
         sb.append("---\n");
-        BigDecimal tamTinh=BigDecimal.ZERO;
-        for(JButton b:gheDangChon()){BigDecimal gia=(BigDecimal)b.getClientProperty("giaVe");tamTinh=tamTinh.add(gia);sb.append("Vé ").append(b.getText()).append("\t").append(String.format(tien,gia.doubleValue())).append("\n");}
-        for(Map.Entry<String,Integer> e:comboSoLuong.entrySet()){ComboBapNuoc c=comboDuLieu.get(e.getKey());if(c==null)continue;BigDecimal t=c.getGiaBan().multiply(BigDecimal.valueOf(e.getValue()));tamTinh=tamTinh.add(t);sb.append(c.getTenCombo()).append(" × ").append(e.getValue()).append("\t").append(String.format(tien,t.doubleValue())).append("\n");}
-        BigDecimal tong=BigDecimal.valueOf(tongTien),giam=tamTinh.subtract(tong);
+        double tamTinh=0;
+        for(JButton b:gheDangChon()){double gia=(Double)b.getClientProperty("giaVe");tamTinh+=gia;sb.append("Vé ").append(b.getText()).append("\t").append(String.format(tien,gia)).append("\n");}
+        for(Map.Entry<String,Integer> e:comboSoLuong.entrySet()){ComboBapNuoc c=comboDuLieu.get(e.getKey());if(c==null)continue;double t=c.getGiaBan()*e.getValue();tamTinh+=t;sb.append(c.getTenCombo()).append(" × ").append(e.getValue()).append("\t").append(String.format(tien,t)).append("\n");}
+        double tong=tongTien,giam=tamTinh-tong;
         sb.append("---\n");
-        if(giam.signum()>0){
+        if(giam>0.004){
             String km=cbKhuyenMai.getSelectedItem()==null?"":cbKhuyenMai.getSelectedItem().toString().split(" - ")[0];
-            sb.append("Tạm tính\t").append(String.format(tien,tamTinh.doubleValue())).append("\n");
-            sb.append("Khuyến mãi ").append(km).append("\t-").append(String.format(tien,giam.doubleValue())).append("\n");
+            sb.append("Tạm tính\t").append(String.format(tien,tamTinh)).append("\n");
+            sb.append("Khuyến mãi ").append(km).append("\t-").append(String.format(tien,giam)).append("\n");
         }
         sb.append("#TỔNG CỘNG\t").append(String.format(tien,tongTien)).append(" VNĐ\n---\n");
         sb.append("Thanh toán: ").append(cbPhuongThuc.getSelectedItem()).append("\n");
         if (tienKhachDua != null) {
-            sb.append("Khách đưa\t").append(String.format("%,.0f VNĐ", tienKhachDua.doubleValue())).append("\n");
-            sb.append("Tiền thừa\t").append(String.format("%,.0f VNĐ", tienKhachDua.subtract(BigDecimal.valueOf(tongTien)).doubleValue())).append("\n");
+            sb.append("Khách đưa\t").append(String.format("%,.0f VNĐ", tienKhachDua)).append("\n");
+            sb.append("Tiền thừa\t").append(String.format("%,.0f VNĐ", tienKhachDua - tongTien)).append("\n");
         }
         sb.append("Ngày lập: ").append((ngayLap == null ? LocalDateTime.now() : ngayLap).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
         noiDungHoaDon=sb.toString();

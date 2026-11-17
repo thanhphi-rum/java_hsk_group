@@ -10,7 +10,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
@@ -142,7 +141,7 @@ public class QuanLyPhieuDat_GUI extends JPanel {
                 .append("\nNgày đặt: ").append(phieu.getNgayDat() == null ? "" : phieu.getNgayDat().format(NGAY))
                 .append("\nKhách hàng: ").append(khach == null ? "Khách vãng lai" : khach.getTenKhachHang())
                 .append("\nTrạng thái: ").append(phieu.getTrangThai()).append("\n\nVé trong phiếu:\n");
-        BigDecimal tong = BigDecimal.ZERO;
+        double tong = 0;
         try {
             List<ChiTietPhieuDatVe> chiTiet = dao.layChiTiet(phieu.getMaPhieuDatVe());
             if (chiTiet.isEmpty()) text.append("Không có vé trong phiếu.");
@@ -153,9 +152,9 @@ public class QuanLyPhieuDat_GUI extends JPanel {
                 text.append("- Vé ").append(ve.getMaVe()).append(" | Suất ").append(maSuat)
                         .append(" | Ghế ").append(maGhe).append(" | ")
                         .append(String.format("%,.0f VNĐ", dong.getDonGia())).append("\n");
-                tong = tong.add(BigDecimal.valueOf(dong.getDonGia()));
+                tong += dong.getDonGia();
             }
-            text.append("\nTổng tiền vé: ").append(String.format("%,.0f VNĐ", tong.doubleValue()));
+            text.append("\nTổng tiền vé: ").append(String.format("%,.0f VNĐ", tong));
         } catch (SQLException ex) {
             text.append("Không tải được chi tiết: ").append(ex.getMessage());
         }

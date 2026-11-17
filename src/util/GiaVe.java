@@ -1,13 +1,11 @@
 package util;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Locale;
 
 /** Quy tắc tính giá vé theo loại ghế. Màn hình bán vé và DAO thanh toán cùng dùng lớp này để không lệch giá. */
 public final class GiaVe {
     /** Ghế VIP đắt hơn ghế thường 20%. */
-    public static final BigDecimal HE_SO_VIP = new BigDecimal("1.20");
+    public static final double HE_SO_VIP = 1.2;
 
     private GiaVe() { }
 
@@ -15,8 +13,13 @@ public final class GiaVe {
         return loaiGhe != null && loaiGhe.toLowerCase(Locale.ROOT).contains("vip");
     }
 
-    public static BigDecimal tinh(BigDecimal giaCoBan, String loaiGhe) {
-        BigDecimal gia = laVip(loaiGhe) ? giaCoBan.multiply(HE_SO_VIP) : giaCoBan;
-        return gia.setScale(2, RoundingMode.HALF_UP);
+    public static double tinh(double giaCoBan, String loaiGhe) {
+        double gia = laVip(loaiGhe) ? giaCoBan * HE_SO_VIP : giaCoBan;
+        return lamTron(gia);
+    }
+
+    /** Làm tròn tiền đến 2 chữ số thập phân (khớp DECIMAL(18,2) trong SQL), tránh sai số của double. */
+    public static double lamTron(double soTien) {
+        return Math.round(soTien * 100) / 100.0;
     }
 }
